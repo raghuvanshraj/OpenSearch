@@ -17,6 +17,8 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.opensearch.common.UUIDs;
+import org.opensearch.common.blobstore.stream.write.WritePriority;
+import org.opensearch.common.blobstore.transfer.RemoteTransferContainer;
 import org.opensearch.common.lucene.store.ByteArrayIndexInput;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.common.io.VersionedCodecStreamWrapper;
@@ -324,8 +326,20 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         } else {
             remoteFilename = getNewRemoteSegmentFilename(dest);
         }
-        remoteDataDirectory.copyFrom(from, src, remoteFilename, context);
+
         String checksum = getChecksumOfLocalFile(from, src);
+        if (remoteDataDirectory.getBlobContainer().isMultiStreamUploadSupported()) {
+            RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
+                from.openInput(src, context),
+                getChecksumOfLocalFileAsLong(from, src),
+                remoteFilename,
+                false,
+                WritePriority.NORMAL
+            );
+            remoteDataDirectory.getBlobContainer().writeStreams(remoteTransferContainer.createWriteContext());
+        } else {
+            remoteDataDirectory.copyFrom(from, src, remoteFilename, context);
+        }
         UploadedSegmentMetadata segmentMetadata = new UploadedSegmentMetadata(src, remoteFilename, checksum, from.fileLength(src));
         segmentsUploadedToRemoteStore.put(src, segmentMetadata);
     }
@@ -382,8 +396,12 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
     }
 
     private String getChecksumOfLocalFile(Directory directory, String file) throws IOException {
+        return Long.toString(getChecksumOfLocalFileAsLong(directory, file));
+    }
+
+    private long getChecksumOfLocalFileAsLong(Directory directory, String file) throws IOException {
         try (IndexInput indexInput = directory.openInput(file, IOContext.DEFAULT)) {
-            return Long.toString(CodecUtil.retrieveChecksum(indexInput));
+            return CodecUtil.retrieveChecksum(indexInput);
         }
     }
 
