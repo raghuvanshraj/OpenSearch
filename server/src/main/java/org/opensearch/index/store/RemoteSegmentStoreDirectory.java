@@ -27,6 +27,7 @@ import org.opensearch.common.blobstore.transfer.RemoteTransferContainer;
 import org.opensearch.common.lucene.store.ByteArrayIndexInput;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.common.io.VersionedCodecStreamWrapper;
+import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadataHandler;
 import org.opensearch.index.translog.transfer.FileSnapshot;
 import org.opensearch.index.translog.transfer.FileTransferException;
