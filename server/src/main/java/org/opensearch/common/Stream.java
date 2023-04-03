@@ -9,7 +9,6 @@
 package org.opensearch.common;
 
 import java.io.InputStream;
-import java.util.function.Supplier;
 
 /**
  * Model composed of an input stream, the total content length and offset

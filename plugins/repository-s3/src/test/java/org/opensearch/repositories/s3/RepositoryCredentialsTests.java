@@ -56,7 +56,6 @@ import org.opensearch.rest.RestResponse;
 import org.opensearch.rest.action.admin.cluster.RestGetRepositoriesAction;
 import org.opensearch.test.OpenSearchSingleNodeTestCase;
 import org.opensearch.test.rest.FakeRestRequest;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
 import java.nio.file.Path;
 import java.security.AccessController;
@@ -297,8 +296,7 @@ public class RepositoryCredentialsTests extends OpenSearchSingleNodeTestCase {
             ClusterService clusterService,
             RecoverySettings recoverySettings
         ) {
-            return new S3Repository(metadata, registry, service, clusterService, recoverySettings,
-                null, null, null, null) {
+            return new S3Repository(metadata, registry, service, clusterService, recoverySettings, null, null, null, null) {
                 @Override
                 protected void assertSnapshotOrGenericThread() {
                     // eliminate thread name check as we create repo manually on test/main threads

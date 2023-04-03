@@ -165,16 +165,22 @@ class S3BlobContainer extends AbstractBlobContainer {
 
     @Override
     public CompletableFuture<UploadResponse> writeBlobByStreams(WriteContext writeContext) throws IOException {
-        UploadRequest uploadRequest = new UploadRequest(blobStore.bucket(),
-            buildKey(writeContext.getFileName()), writeContext.getFileSize(), writeContext.getChecksum(),
-            writeContext.getWritePriority(), writeContext.getUploadFinalizer());
+        UploadRequest uploadRequest = new UploadRequest(
+            blobStore.bucket(),
+            buildKey(writeContext.getFileName()),
+            writeContext.getFileSize(),
+            writeContext.getChecksum(),
+            writeContext.getWritePriority(),
+            writeContext.getUploadFinalizer()
+        );
         try {
             long partSize = blobStore.getAsyncUploadUtils().calculateOptimalPartSize(writeContext.getFileSize());
             StreamContext streamContext = SocketAccess.doPrivileged(() -> writeContext.getStreamContext(partSize));
-            try(AmazonAsyncS3Reference amazonS3Reference = SocketAccess.doPrivileged(blobStore::asyncClientReference)){
+            try (AmazonAsyncS3Reference amazonS3Reference = SocketAccess.doPrivileged(blobStore::asyncClientReference)) {
 
-                S3AsyncClient s3AsyncClient = writeContext.getWritePriority() == WritePriority.HIGH ?
-                    amazonS3Reference.get().priorityClient() : amazonS3Reference.get().client();
+                S3AsyncClient s3AsyncClient = writeContext.getWritePriority() == WritePriority.HIGH
+                    ? amazonS3Reference.get().priorityClient()
+                    : amazonS3Reference.get().client();
                 CompletableFuture<UploadResponse> returnFuture = new CompletableFuture<>();
                 CompletableFuture<UploadResponse> completableFuture = blobStore.getAsyncUploadUtils()
                     .uploadObject(s3AsyncClient, uploadRequest, streamContext);

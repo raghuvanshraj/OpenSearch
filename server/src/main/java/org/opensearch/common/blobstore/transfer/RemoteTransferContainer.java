@@ -57,11 +57,13 @@ public class RemoteTransferContainer implements Closeable {
     private static final Logger log = LogManager.getLogger(RemoteTransferContainer.class);
 
     // calculates file checksum internally
-    public RemoteTransferContainer(Path localFile,
-                                   String localFileName,
-                                   String remoteFileName,
-                                   boolean failTransferIfFileExists,
-                                   WritePriority writePriority) throws IOException {
+    public RemoteTransferContainer(
+        Path localFile,
+        String localFileName,
+        String remoteFileName,
+        boolean failTransferIfFileExists,
+        WritePriority writePriority
+    ) throws IOException {
         this.localFileName = localFileName;
         this.remoteFileName = remoteFileName;
         this.localFile = localFile;
@@ -72,24 +74,31 @@ public class RemoteTransferContainer implements Closeable {
         localFile.getFileSystem().provider();
         try (FileChannel channel = channelFactory.open(localFile, StandardOpenOption.READ)) {
             this.contentLength = channel.size();
-            TranslogCheckedContainer translogCheckedContainer = new TranslogCheckedContainer(channel, 0, (int) contentLength, localFileName);
+            TranslogCheckedContainer translogCheckedContainer = new TranslogCheckedContainer(
+                channel,
+                0,
+                (int) contentLength,
+                localFileName
+            );
             this.expectedChecksum = translogCheckedContainer.getChecksum();
         }
     }
 
-    public RemoteTransferContainer(Directory directory,
-                                   IOContext ioContext,
-                                   String localFileName,
-                                   String remoteFileName,
-                                   boolean failTransferIfFileExists,
-                                   WritePriority writePriority,
-                                   long expectedChecksum) throws IOException {
+    public RemoteTransferContainer(
+        Directory directory,
+        IOContext ioContext,
+        String localFileName,
+        String remoteFileName,
+        boolean failTransferIfFileExists,
+        WritePriority writePriority,
+        long expectedChecksum
+    ) throws IOException {
         this.localFileName = localFileName;
         this.remoteFileName = remoteFileName;
         this.directory = directory;
         this.expectedChecksum = expectedChecksum;
         this.failTransferIfFileExists = failTransferIfFileExists;
-        try(IndexInput indexInput = directory.openInput(this.localFileName, ioContext)) {
+        try (IndexInput indexInput = directory.openInput(this.localFileName, ioContext)) {
             this.contentLength = indexInput.length();
         }
         this.ioContext = ioContext;
@@ -123,17 +132,19 @@ public class RemoteTransferContainer implements Closeable {
 
         this.partSize = partSize;
         this.lastPartSize = (contentLength % partSize) != 0 ? contentLength % partSize : partSize;
-        this.numberOfParts = (int) ((contentLength % partSize) == 0 ? contentLength / partSize
-            : (contentLength / partSize) + 1);
+        this.numberOfParts = (int) ((contentLength % partSize) == 0 ? contentLength / partSize : (contentLength / partSize) + 1);
 
-        log.info("Number of parts: {}, Last part size: {}, Part size: {}, Content length: {}", numberOfParts, partSize, lastPartSize, contentLength);
+        log.info(
+            "Number of parts: {}, Last part size: {}, Part size: {}, Content length: {}",
+            numberOfParts,
+            partSize,
+            lastPartSize,
+            contentLength
+        );
         ResettableCheckedInputStream[] streams = new ResettableCheckedInputStream[numberOfParts];
         inputStreams.set(streams);
 
-        return new StreamContext(
-            new StreamProvider(getTransferPartStreamSupplier(), partSize, lastPartSize, numberOfParts),
-            numberOfParts
-        );
+        return new StreamContext(new StreamProvider(getTransferPartStreamSupplier(), partSize, lastPartSize, numberOfParts), numberOfParts);
     }
 
     private TransferPartStreamSupplier getTransferPartStreamSupplier() {
@@ -146,23 +157,27 @@ public class RemoteTransferContainer implements Closeable {
         });
     }
 
-    private Supplier<Stream> getMultiPartStreamSupplierForFile(final int streamIdx, final long size,
-                                                               final long position) {
+    private Supplier<Stream> getMultiPartStreamSupplierForFile(final int streamIdx, final long size, final long position) {
         return () -> {
             try {
                 if (inputStreams.get() == null) {
                     throw new IllegalArgumentException("InputStream parts not yet defined.");
                 }
                 OffsetRangeFileInputStream offsetRangeInputStream = new OffsetRangeFileInputStream(localFile, size, position);
-                ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(offsetRangeInputStream,
-                    localFileName, streamIdx, numberOfParts, ()-> {
-                    try {
-                        return offsetRangeInputStream.getFileChannel().position();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(
+                    offsetRangeInputStream,
+                    localFileName,
+                    streamIdx,
+                    numberOfParts,
+                    () -> {
+                        try {
+                            return offsetRangeInputStream.getFileChannel().position();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        return null;
                     }
-                    return null;
-                });
+                );
                 Objects.requireNonNull(inputStreams.get())[streamIdx] = checkedInputStream;
 
                 return new Stream(checkedInputStream, size, position);
@@ -173,8 +188,7 @@ public class RemoteTransferContainer implements Closeable {
         };
     }
 
-    private Supplier<Stream> getMultiPartStreamSupplierForIndexInput(final int streamIdx, final long size,
-                                                                     final long position) {
+    private Supplier<Stream> getMultiPartStreamSupplierForIndexInput(final int streamIdx, final long size, final long position) {
         return () -> {
             try {
                 if (inputStreams.get() == null) {
@@ -182,8 +196,13 @@ public class RemoteTransferContainer implements Closeable {
                 }
                 IndexInput indexInput = directory.openInput(localFileName, ioContext);
                 OffsetRangeIndexInputStream offsetRangeInputStream = new OffsetRangeIndexInputStream(indexInput, size, position);
-                ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(offsetRangeInputStream,
-                    localFileName, streamIdx, numberOfParts, indexInput::getFilePointer);
+                ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(
+                    offsetRangeInputStream,
+                    localFileName,
+                    streamIdx,
+                    numberOfParts,
+                    indexInput::getFilePointer
+                );
                 Objects.requireNonNull(inputStreams.get())[streamIdx] = checkedInputStream;
 
                 return new Stream(checkedInputStream, size, position);
@@ -199,8 +218,14 @@ public class RemoteTransferContainer implements Closeable {
             long actualChecksum = getActualChecksum();
             if (actualChecksum != expectedChecksum) {
                 throw new RuntimeException(
-                    new CorruptedLocalFileException("Data integrity check done after upload for file " +
-                        localFileName + " failed, actual checksum: " + actualChecksum + ", expected checksum: " + expectedChecksum)
+                    new CorruptedLocalFileException(
+                        "Data integrity check done after upload for file "
+                            + localFileName
+                            + " failed, actual checksum: "
+                            + actualChecksum
+                            + ", expected checksum: "
+                            + expectedChecksum
+                    )
                 );
             }
         }
@@ -212,13 +237,15 @@ public class RemoteTransferContainer implements Closeable {
 
     private long getActualChecksum() {
         long checksum = Objects.requireNonNull(inputStreams.get())[0].getChecksum();
-        for (int checkSumIdx = 1; checkSumIdx < Objects.requireNonNull(inputStreams.get()).length-1; checkSumIdx ++ ) {
-            checksum = JZlib.crc32_combine(checksum, Objects.requireNonNull(inputStreams.get())[checkSumIdx].getChecksum(),
-                partSize);
+        for (int checkSumIdx = 1; checkSumIdx < Objects.requireNonNull(inputStreams.get()).length - 1; checkSumIdx++) {
+            checksum = JZlib.crc32_combine(checksum, Objects.requireNonNull(inputStreams.get())[checkSumIdx].getChecksum(), partSize);
         }
         if (numberOfParts > 1) {
-            checksum = JZlib.crc32_combine(checksum, Objects.requireNonNull(inputStreams.get())[numberOfParts-1].getChecksum(),
-                lastPartSize);
+            checksum = JZlib.crc32_combine(
+                checksum,
+                Objects.requireNonNull(inputStreams.get())[numberOfParts - 1].getChecksum(),
+                lastPartSize
+            );
         }
 
         return checksum;

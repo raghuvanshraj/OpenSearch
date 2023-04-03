@@ -77,7 +77,9 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 
-import static com.amazonaws.SDKGlobalConfiguration.*;
+import static com.amazonaws.SDKGlobalConfiguration.AWS_ROLE_ARN_ENV_VAR;
+import static com.amazonaws.SDKGlobalConfiguration.AWS_ROLE_SESSION_NAME_ENV_VAR;
+import static com.amazonaws.SDKGlobalConfiguration.AWS_WEB_IDENTITY_ENV_VAR;
 import static java.util.Collections.emptyMap;
 
 class S3AsyncService implements Closeable {
@@ -124,9 +126,11 @@ class S3AsyncService implements Closeable {
      * Attempts to retrieve a client by its repository metadata and settings from the cache.
      * If the client does not exist it will be created.
      */
-    public AmazonAsyncS3Reference client(RepositoryMetadata repositoryMetadata,
-                                         AsyncExecutorBuilder priorityExecutorBuilder,
-                                         AsyncExecutorBuilder normalExecutorBuilder) {
+    public AmazonAsyncS3Reference client(
+        RepositoryMetadata repositoryMetadata,
+        AsyncExecutorBuilder priorityExecutorBuilder,
+        AsyncExecutorBuilder normalExecutorBuilder
+    ) {
         final S3ClientSettings clientSettings = settings(repositoryMetadata);
         {
             final AmazonAsyncS3Reference clientReference = clientsCache.get(clientSettings);
@@ -139,8 +143,9 @@ class S3AsyncService implements Closeable {
             if (existing != null && existing.tryIncRef()) {
                 return existing;
             }
-            final AmazonAsyncS3Reference clientReference = new AmazonAsyncS3Reference(buildClient(clientSettings,
-                priorityExecutorBuilder, normalExecutorBuilder));
+            final AmazonAsyncS3Reference clientReference = new AmazonAsyncS3Reference(
+                buildClient(clientSettings, priorityExecutorBuilder, normalExecutorBuilder)
+            );
             clientReference.incRef();
             clientsCache = MapBuilder.newMapBuilder(clientsCache).put(clientSettings, clientReference).immutableMap();
             return clientReference;
@@ -183,13 +188,14 @@ class S3AsyncService implements Closeable {
     }
 
     // proxy for testing
-    synchronized AmazonAsyncS3WithCredentials buildClient(final S3ClientSettings clientSettings,
-                                                          AsyncExecutorBuilder priorityExecutorBuilder,
-                                                          AsyncExecutorBuilder normalExecutorBuilder) {
+    synchronized AmazonAsyncS3WithCredentials buildClient(
+        final S3ClientSettings clientSettings,
+        AsyncExecutorBuilder priorityExecutorBuilder,
+        AsyncExecutorBuilder normalExecutorBuilder
+    ) {
         final S3AsyncClientBuilder builder = S3AsyncClient.builder();
         final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
         builder.credentialsProvider(credentials);
-
 
         String endpoint = Strings.hasLength(clientSettings.endpoint) ? clientSettings.endpoint : Constants.S3_HOSTNAME;
         if ((endpoint.startsWith("http://") || endpoint.startsWith("https://")) == false) {
@@ -214,17 +220,25 @@ class S3AsyncService implements Closeable {
         }
 
         builder.httpClient(buildConfiguration(clientSettings, priorityExecutorBuilder.getTransferNIOGroup()));
-        builder.asyncConfiguration(ClientAsyncConfiguration.builder()
-            .advancedOption(SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR,
-                priorityExecutorBuilder.getFutureCompletionExecutor())
-            .build());
+        builder.asyncConfiguration(
+            ClientAsyncConfiguration.builder()
+                .advancedOption(
+                    SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR,
+                    priorityExecutorBuilder.getFutureCompletionExecutor()
+                )
+                .build()
+        );
         final S3AsyncClient priorityClient = SocketAccess.doPrivileged(builder::build);
 
         builder.httpClient(buildConfiguration(clientSettings, normalExecutorBuilder.getTransferNIOGroup()));
-        builder.asyncConfiguration(ClientAsyncConfiguration.builder()
-            .advancedOption(SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR,
-                normalExecutorBuilder.getFutureCompletionExecutor())
-            .build());
+        builder.asyncConfiguration(
+            ClientAsyncConfiguration.builder()
+                .advancedOption(
+                    SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR,
+                    normalExecutorBuilder.getFutureCompletionExecutor()
+                )
+                .build()
+        );
         final S3AsyncClient client = SocketAccess.doPrivileged(builder::build);
 
         return AmazonAsyncS3WithCredentials.create(client, priorityClient, credentials);
@@ -246,7 +260,7 @@ class S3AsyncService implements Closeable {
             clientBuilder.proxyConfiguration(proxyConfiguration.build());
         }
 
-        //TODO: add max retry and UseThrottleRetry. Replace values with settings and put these in default settings
+        // TODO: add max retry and UseThrottleRetry. Replace values with settings and put these in default settings
         clientBuilder.connectionTimeout(Duration.ofSeconds(10));
         clientBuilder.connectionAcquisitionTimeout(Duration.ofMinutes(2));
         clientBuilder.maxPendingConnectionAcquires(10_000);
@@ -298,8 +312,10 @@ class S3AsyncService implements Closeable {
                     stsCredentialsProviderBuilder::build
                 );
 
-                return new PrivilegedSTSAssumeRoleSessionCredentialsProvider<>(securityTokenService,
-                    new SessionsCredsWrapper<>(stsCredentialsProvider));
+                return new PrivilegedSTSAssumeRoleSessionCredentialsProvider<>(
+                    securityTokenService,
+                    new SessionsCredsWrapper<>(stsCredentialsProvider)
+                );
             } else {
                 final STSAssumeRoleWithWebIdentitySessionCredentialsProvider.Builder stsCredentialsProviderBuilder =
                     new STSAssumeRoleWithWebIdentitySessionCredentialsProvider.Builder(
@@ -312,13 +328,16 @@ class S3AsyncService implements Closeable {
                     stsCredentialsProviderBuilder::build
                 );
 
-                return new PrivilegedSTSAssumeRoleSessionCredentialsProvider<>(securityTokenService,
-                    new SessionsCredsWrapper<>(stsCredentialsProvider));
+                return new PrivilegedSTSAssumeRoleSessionCredentialsProvider<>(
+                    securityTokenService,
+                    new SessionsCredsWrapper<>(stsCredentialsProvider)
+                );
             }
         } else if (basicCredentials != null) {
             logger.debug("Using basic key/secret credentials");
-            return StaticCredentialsProvider.create(AwsBasicCredentials.create(basicCredentials.getAWSAccessKeyId(),
-                basicCredentials.getAWSSecretKey()));
+            return StaticCredentialsProvider.create(
+                AwsBasicCredentials.create(basicCredentials.getAWSAccessKeyId(), basicCredentials.getAWSSecretKey())
+            );
         } else {
             logger.debug("Using instance profile credentials");
             return InstanceProfileCredentialsProvider.builder().build();
@@ -329,17 +348,14 @@ class S3AsyncService implements Closeable {
     // valid paths.
     private static void setDefaultAwsProfilePath() {
         if (ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.getStringValue().isEmpty()) {
-            System.setProperty(ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(),
-                System.getProperty("opensearch.path.conf"));
+            System.setProperty(ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(), System.getProperty("opensearch.path.conf"));
         }
         if (ProfileFileSystemSetting.AWS_CONFIG_FILE.getStringValue().isEmpty()) {
-            System.setProperty(ProfileFileSystemSetting.AWS_CONFIG_FILE.property(),
-                System.getProperty("opensearch.path.conf"));
+            System.setProperty(ProfileFileSystemSetting.AWS_CONFIG_FILE.property(), System.getProperty("opensearch.path.conf"));
         }
     }
 
-    static class SessionsCredsWrapper <P extends AWSSessionCredentialsProvider & Closeable>
-        implements AwsCredentialsProvider, Closeable {
+    static class SessionsCredsWrapper<P extends AWSSessionCredentialsProvider & Closeable> implements AwsCredentialsProvider, Closeable {
 
         private final P sessionCredentialsProvider;
 
@@ -350,8 +366,11 @@ class S3AsyncService implements Closeable {
         @Override
         public AwsCredentials resolveCredentials() {
             AWSSessionCredentials sessionCredentials = sessionCredentialsProvider.getCredentials();
-            return AwsSessionCredentials.create(sessionCredentials.getAWSAccessKeyId(),
-                sessionCredentials.getAWSSecretKey(), sessionCredentials.getSessionToken());
+            return AwsSessionCredentials.create(
+                sessionCredentials.getAWSAccessKeyId(),
+                sessionCredentials.getAWSSecretKey(),
+                sessionCredentials.getSessionToken()
+            );
         }
 
         @Override

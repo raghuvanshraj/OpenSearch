@@ -347,18 +347,23 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         }
     }
 
-    private CompletableFuture<UploadResponse> createUploadFuture(Directory from, String src, String remoteFileName,
-                                                                 IOContext ioContext)
+    private CompletableFuture<UploadResponse> createUploadFuture(Directory from, String src, String remoteFileName, IOContext ioContext)
         throws Exception {
 
         AtomicReference<Exception> exceptionRef = new AtomicReference<>();
         long expectedChecksum = calculateChecksumOfChecksum(from, src);
-        RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(from, ioContext,
-            src, remoteFileName, true, WritePriority.NORMAL, expectedChecksum);
+        RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
+            from,
+            ioContext,
+            src,
+            remoteFileName,
+            true,
+            WritePriority.NORMAL,
+            expectedChecksum
+        );
         WriteContext writeContext = remoteTransferContainer.createWriteContext();
-        CompletableFuture<UploadResponse> uploadFuture = remoteDataDirectory.getBlobContainer()
-            .writeBlobByStreams(writeContext);
-        return uploadFuture.whenComplete((resp, throwable)-> {
+        CompletableFuture<UploadResponse> uploadFuture = remoteDataDirectory.getBlobContainer().writeBlobByStreams(writeContext);
+        return uploadFuture.whenComplete((resp, throwable) -> {
             try {
                 remoteTransferContainer.close();
             } catch (Exception e) {
@@ -480,8 +485,15 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
             try {
                 return JZlib.crc32_combine(storedChecksum, checksumOfChecksum.getValue(), SEGMENT_CHECKSUM_BYTES);
             } catch (Exception e) {
-                throw new ChecksumCombinationException("Potentially corrupted file: Checksum combination failed while combining stored checksum " +
-                    "and calculated checksum of stored checksum in segment file: " + file + ", directory: " + directory, file, e);
+                throw new ChecksumCombinationException(
+                    "Potentially corrupted file: Checksum combination failed while combining stored checksum "
+                        + "and calculated checksum of stored checksum in segment file: "
+                        + file
+                        + ", directory: "
+                        + directory,
+                    file,
+                    e
+                );
             }
         }
     }

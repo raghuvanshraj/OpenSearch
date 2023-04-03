@@ -20,8 +20,11 @@ final class AmazonAsyncS3WithCredentials {
     private final S3AsyncClient priorityClient;
     private final AwsCredentialsProvider credentials;
 
-    private AmazonAsyncS3WithCredentials(final S3AsyncClient client, final S3AsyncClient priorityClient,
-                                         @Nullable final AwsCredentialsProvider credentials) {
+    private AmazonAsyncS3WithCredentials(
+        final S3AsyncClient client,
+        final S3AsyncClient priorityClient,
+        @Nullable final AwsCredentialsProvider credentials
+    ) {
         this.client = client;
         this.credentials = credentials;
         this.priorityClient = priorityClient;
@@ -39,8 +42,11 @@ final class AmazonAsyncS3WithCredentials {
         return credentials;
     }
 
-    static AmazonAsyncS3WithCredentials create(final S3AsyncClient client, final S3AsyncClient priorityClient,
-                                               @Nullable final AwsCredentialsProvider credentials) {
+    static AmazonAsyncS3WithCredentials create(
+        final S3AsyncClient client,
+        final S3AsyncClient priorityClient,
+        @Nullable final AwsCredentialsProvider credentials
+    ) {
         return new AmazonAsyncS3WithCredentials(client, priorityClient, credentials);
     }
 }

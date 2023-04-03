@@ -16,9 +16,7 @@ public class AsyncExecutorBuilder {
     private final ExecutorService streamReader;
     private final TransferNIOGroup transferNIOGroup;
 
-    public AsyncExecutorBuilder(ExecutorService futureCompletionExecutor,
-                                ExecutorService streamReader,
-                                TransferNIOGroup transferNIOGroup) {
+    public AsyncExecutorBuilder(ExecutorService futureCompletionExecutor, ExecutorService streamReader, TransferNIOGroup transferNIOGroup) {
         this.transferNIOGroup = transferNIOGroup;
         this.streamReader = streamReader;
         this.futureCompletionExecutor = futureCompletionExecutor;
