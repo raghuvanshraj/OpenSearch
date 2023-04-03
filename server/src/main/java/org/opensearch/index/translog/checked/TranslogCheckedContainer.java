@@ -8,8 +8,6 @@
 
 package org.opensearch.index.translog.checked;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.opensearch.common.io.Channels;
 import org.opensearch.common.util.concurrent.ReleasableLock;
 
@@ -26,19 +24,6 @@ public class TranslogCheckedContainer {
     private final AtomicLong contentLength;
     private final ReleasableLock updateLock = new ReleasableLock(new ReentrantLock());
     private final String file;
-
-    private final Logger logger = LogManager.getLogger(TranslogCheckedContainer.class);
-
-    /**
-     * Creates an empty NRTCheckedContainer.
-     *
-     * @param file Name of the file
-     */
-    public TranslogCheckedContainer(String file) {
-        this.checksum = new CRC32();
-        this.contentLength = new AtomicLong();
-        this.file = file;
-    }
 
     /**
      * Creates NRTCheckedContainer from provided channel.
@@ -68,53 +53,6 @@ public class TranslogCheckedContainer {
             checksum.update(bytes, offset, len);
             updateContentLength(len);
         }
-    }
-
-    /**
-     * Resets and updates checksum from provided channel.
-     *
-     * @param channel {@link FileChannel} to read from
-     * @param offset  offset of channel from which bytes are to be read.
-     * @param len     Length of bytes to be read.
-     */
-    public void resetAndUpdate(FileChannel channel, int offset, int len) throws IOException {
-        byte[] bytes = Channels.readFromFileChannel(channel, offset, len);
-        try (ReleasableLock ignored = updateLock.acquire()) {
-            String stage = System.getenv("STAGE");
-            if ("alpha".equals(stage) || "beta".equals(stage)) {
-                logger.info("Resetting checksum for file: " + file);
-                CRC32 curCRC = new CRC32();
-                curCRC.update(bytes, 0, bytes.length);
-                logger.info("Previous checksum stored in container for file: " + file + " " + checksum.getValue());
-                logger.info("Actual checksum of the updated file: " + file + " " + curCRC.getValue());
-            }
-            checksum.reset();
-            contentLength.set(0L);
-            checksum.update(bytes, 0, bytes.length);
-            if ("alpha".equals(stage) || "beta".equals(stage)) {
-                logger.info("Updated checksum of the file: " + file + " " + checksum.getValue());
-                printTrace(file);
-            }
-            updateContentLength(len);
-        }
-    }
-
-    public void printTrace(String fileName) {
-        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
-        int maxTraceIterations = 15;
-        StringBuilder sb = new StringBuilder();
-        sb.append("checkpoint_debug_trace ").append(fileName).append(" =>");
-        for (int traceIdx = 2; traceIdx < maxTraceIterations; traceIdx++) {
-            if (traceIdx < stackTrace.length) {
-                sb.append(stackTrace[traceIdx].getClassName())
-                    .append(".")
-                    .append(stackTrace[traceIdx].getMethodName())
-                    .append(":")
-                    .append(stackTrace[traceIdx].getLineNumber())
-                    .append(":::");
-            }
-        }
-        logger.info(sb.toString());
     }
 
     private void updateContentLength(long delta) {
