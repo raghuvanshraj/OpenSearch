@@ -15,14 +15,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Supplier;
 
+/**
+ * ResettableCheckedInputStream is a modified implementation of {@link java.util.zip.CheckedInputStream} that supports
+ * mark and reset and modifies the file checksum during mark and reset calls.
+ */
 public class ResettableCheckedInputStream extends FilterInputStream {
     private final CRC32 cksum;
     private final CRC32 markedChecksum;
     private final long startPos;
-    private String file;
-    private int partNumber;
-    private int numberOfParts;
-    private Supplier<Long> posSupplier;
+    private final String file;
+    private final int partNumber;
+    private final int numberOfParts;
+    private final Supplier<Long> posSupplier;
 
     /**
      * Creates an input stream using the specified Checksum.

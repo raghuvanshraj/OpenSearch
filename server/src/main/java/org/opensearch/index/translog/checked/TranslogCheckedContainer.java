@@ -18,6 +18,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+/**
+ * TranslogCheckedContainer is used to store, update and retrieve checksums for translog files.
+ */
 public class TranslogCheckedContainer {
 
     private final Checksum checksum;
