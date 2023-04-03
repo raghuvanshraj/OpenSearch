@@ -37,6 +37,9 @@ import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+/**
+ * RemoteTransferContainer is an encapsulation for managing transfers for translog and segment files.
+ */
 public class RemoteTransferContainer implements Closeable {
 
     private Path localFile;
@@ -56,7 +59,18 @@ public class RemoteTransferContainer implements Closeable {
 
     private static final Logger log = LogManager.getLogger(RemoteTransferContainer.class);
 
-    // calculates file checksum internally
+    /**
+     * Construct a new RemoteTransferContainer object using {@link Path} reference to the file.
+     * This constructor calculates the <code>expectedChecksum</code> of the uploaded file internally by calling
+     * <code>TranslogCheckedContainer#getChecksum</code>
+     *
+     * @param localFile A {@link Path} reference to the local file
+     * @param localFileName Name of the local file
+     * @param remoteFileName Name of the remote file
+     * @param failTransferIfFileExists A boolean to determine if upload has to be failed if file exists
+     * @param writePriority The {@link WritePriority} of current upload
+     * @throws IOException If opening file channel to the local file fails
+     */
     public RemoteTransferContainer(
         Path localFile,
         String localFileName,
@@ -84,6 +98,16 @@ public class RemoteTransferContainer implements Closeable {
         }
     }
 
+    /**
+     * @param directory The directory which contains the local file
+     * @param ioContext The {@link IOContext} which will be used to open {@link IndexInput} to the file
+     * @param localFileName Name of the local file
+     * @param remoteFileName Name of the remote file
+     * @param failTransferIfFileExists A boolean to determine if upload has to be failed if file exists
+     * @param writePriority The {@link WritePriority} of current upload
+     * @param expectedChecksum Expected checksum of the uploaded file which will be used in post upload data integrity checks
+     * @throws IOException If opening {@link IndexInput} on local file fails
+     */
     public RemoteTransferContainer(
         Directory directory,
         IOContext ioContext,
@@ -105,6 +129,9 @@ public class RemoteTransferContainer implements Closeable {
         this.writePriority = writePriority;
     }
 
+    /**
+     * @return The {@link  WriteContext} for the current upload
+     */
     public WriteContext createWriteContext() {
         return new WriteContext(
             remoteFileName,
@@ -117,6 +144,10 @@ public class RemoteTransferContainer implements Closeable {
         );
     }
 
+    /**
+     * @param partSize Part sizes of all parts apart from the last one, which is determined internally
+     * @return The {@link StreamContext} object that will be used by the vendor plugin to retrieve streams
+     */
     public StreamContext supplyStreamContext(long partSize) {
         try {
             return this.openMultipartStreams(partSize);
@@ -125,7 +156,7 @@ public class RemoteTransferContainer implements Closeable {
         }
     }
 
-    public StreamContext openMultipartStreams(long partSize) throws IOException {
+    private StreamContext openMultipartStreams(long partSize) throws IOException {
         if (inputStreams.get() != null) {
             throw new IOException("Multi-part streams are already created.");
         }
@@ -213,7 +244,7 @@ public class RemoteTransferContainer implements Closeable {
         };
     }
 
-    public void finalizeUpload(boolean uploadSuccessful) {
+    private void finalizeUpload(boolean uploadSuccessful) {
         if (uploadSuccessful) {
             long actualChecksum = getActualChecksum();
             if (actualChecksum != expectedChecksum) {
@@ -231,6 +262,9 @@ public class RemoteTransferContainer implements Closeable {
         }
     }
 
+    /**
+     * @return The total content length of current upload
+     */
     public long getContentLength() {
         return contentLength;
     }

@@ -8,6 +8,10 @@
 
 package org.opensearch.common;
 
+/**
+ * TransferPartStreamSupplier is used to supply streams to specific parts of a file based on
+ * the partNo, size and position (the offset in the file)
+ */
 public interface TransferPartStreamSupplier {
     Stream supply(int partNo, long size, long position);
 }
