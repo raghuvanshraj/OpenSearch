@@ -15,8 +15,7 @@ public class StreamProvider {
     private final long lastPartSize;
     private final int numOfParts;
 
-    public StreamProvider(TransferPartStreamSupplier streamSupplier, long partSize, long lastPartSize,
-                          int numOfParts) {
+    public StreamProvider(TransferPartStreamSupplier streamSupplier, long partSize, long lastPartSize, int numOfParts) {
         this.streamSupplier = streamSupplier;
         this.partSize = partSize;
         this.lastPartSize = lastPartSize;

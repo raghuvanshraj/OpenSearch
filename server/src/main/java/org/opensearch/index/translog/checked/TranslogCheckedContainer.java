@@ -70,7 +70,6 @@ public class TranslogCheckedContainer {
         }
     }
 
-
     /**
      * Resets and updates checksum from provided channel.
      *
@@ -83,10 +82,10 @@ public class TranslogCheckedContainer {
         try (ReleasableLock ignored = updateLock.acquire()) {
             String stage = System.getenv("STAGE");
             if ("alpha".equals(stage) || "beta".equals(stage)) {
-                logger.info("Resetting checksum for file: " + file );
+                logger.info("Resetting checksum for file: " + file);
                 CRC32 curCRC = new CRC32();
                 curCRC.update(bytes, 0, bytes.length);
-                logger.info("Previous checksum stored in container for file: " + file  + " " + checksum.getValue());
+                logger.info("Previous checksum stored in container for file: " + file + " " + checksum.getValue());
                 logger.info("Actual checksum of the updated file: " + file + " " + curCRC.getValue());
             }
             checksum.reset();
@@ -105,11 +104,13 @@ public class TranslogCheckedContainer {
         int maxTraceIterations = 15;
         StringBuilder sb = new StringBuilder();
         sb.append("checkpoint_debug_trace ").append(fileName).append(" =>");
-        for (int traceIdx=2; traceIdx<maxTraceIterations; traceIdx++) {
+        for (int traceIdx = 2; traceIdx < maxTraceIterations; traceIdx++) {
             if (traceIdx < stackTrace.length) {
                 sb.append(stackTrace[traceIdx].getClassName())
-                    .append(".").append(stackTrace[traceIdx].getMethodName())
-                    .append(":").append(stackTrace[traceIdx].getLineNumber())
+                    .append(".")
+                    .append(stackTrace[traceIdx].getMethodName())
+                    .append(":")
+                    .append(stackTrace[traceIdx].getLineNumber())
                     .append(":::");
             }
         }

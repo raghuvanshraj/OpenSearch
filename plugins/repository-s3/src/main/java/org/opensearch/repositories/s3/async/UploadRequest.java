@@ -11,8 +11,14 @@ public class UploadRequest {
     private final WritePriority writePriority;
     private final UploadFinalizer uploadFinalizer;
 
-    public UploadRequest(String bucket, String key, long contentLength, long checksum, WritePriority writePriority,
-                         UploadFinalizer uploadFinalizer) {
+    public UploadRequest(
+        String bucket,
+        String key,
+        long contentLength,
+        long checksum,
+        WritePriority writePriority,
+        UploadFinalizer uploadFinalizer
+    ) {
         this.bucket = bucket;
         this.key = key;
         this.contentLength = contentLength;

@@ -33,10 +33,8 @@
 package org.opensearch.repositories.s3;
 
 import com.amazonaws.services.s3.AmazonS3Client;
-import org.opensearch.common.Nullable;
 import org.opensearch.common.concurrent.RefCountedReleasable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.io.Closeable;
 import java.io.IOException;
