@@ -271,17 +271,17 @@ final class S3ClientSettings {
     /** The max number of connections for the s3 client */
     final int maxConnections;
 
-//    /** The connection timeout for the s3 async client */
-//    final int connectionV2TimeoutMillis;
-//
-//    /** The max number of requests pending to acquire connection for the s3 async client */
-//    final int maxPendingAcquireConnections;
-//
-//    /** The max number of connections for the s3 async client */
-//    final int maxV2Connections;
-//
-//    /** The connnection acquisition timeout for the s3 async client */
-//    final int connectionAcquisitionTimeout;
+    // /** The connection timeout for the s3 async client */
+    // final int connectionV2TimeoutMillis;
+    //
+    // /** The max number of requests pending to acquire connection for the s3 async client */
+    // final int maxPendingAcquireConnections;
+    //
+    // /** The max number of connections for the s3 async client */
+    // final int maxV2Connections;
+    //
+    // /** The connnection acquisition timeout for the s3 async client */
+    // final int connectionAcquisitionTimeout;
 
     /** The number of retries to use for the s3 client. */
     final int maxRetries;
@@ -448,19 +448,21 @@ final class S3ClientSettings {
      *
      * Note this will always at least return a client named "default".
      */
-    static Map<String, S3ClientSettings> load(final Settings settings, final Path configPath,
-                                              WritePriority writePriority, int eventLoopThreads) {
+    static Map<String, S3ClientSettings> load(
+        final Settings settings,
+        final Path configPath,
+        WritePriority writePriority,
+        int eventLoopThreads
+    ) {
         final Set<String> clientNames = settings.getGroups(PREFIX).keySet();
         final Map<String, S3ClientSettings> clients = new HashMap<>();
         for (final String clientName : clientNames) {
-            clients.put(clientName, getClientSettings(settings, clientName, configPath, writePriority,
-                eventLoopThreads));
+            clients.put(clientName, getClientSettings(settings, clientName, configPath, writePriority, eventLoopThreads));
         }
         if (clients.containsKey("default") == false) {
             // this won't find any settings under the default client,
             // but it will pull all the fallback static settings
-            clients.put("default", getClientSettings(settings, "default", configPath, writePriority,
-                eventLoopThreads));
+            clients.put("default", getClientSettings(settings, "default", configPath, writePriority, eventLoopThreads));
         }
         return Collections.unmodifiableMap(clients);
     }
@@ -557,8 +559,13 @@ final class S3ClientSettings {
 
     // pkg private for tests
     /** Parse settings for a single client. */
-    static S3ClientSettings getClientSettings(final Settings settings, final String clientName, final Path configPath,
-                                              WritePriority writePriority, int eventLoopThreads) {
+    static S3ClientSettings getClientSettings(
+        final Settings settings,
+        final String clientName,
+        final Path configPath,
+        WritePriority writePriority,
+        int eventLoopThreads
+    ) {
         final Protocol awsProtocol = getConfigValue(settings, clientName, PROTOCOL_SETTING);
         return new S3ClientSettings(
             S3ClientSettings.loadCredentials(settings, clientName),
@@ -577,7 +584,8 @@ final class S3ClientSettings {
             getConfigValue(settings, clientName, REGION),
             getConfigValue(settings, clientName, SIGNER_OVERRIDE),
             validateAndCreateProxySettings(settings, clientName, awsProtocol),
-            writePriority, eventLoopThreads
+            writePriority,
+            eventLoopThreads
         );
     }
 

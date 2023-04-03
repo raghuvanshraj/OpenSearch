@@ -11,8 +11,6 @@ package org.opensearch.common.blobstore.stream.write;
 import org.opensearch.common.blobstore.stream.StreamContext;
 import org.opensearch.common.blobstore.transfer.UploadFinalizer;
 
-import java.util.function.Consumer;
-
 /**
  * WriteContext is used to encapsulate all data needed by <code>BlobContainer#writeStreams</code>
  */
@@ -35,9 +33,15 @@ public class WriteContext {
      * @param failIfAlreadyExists A boolean to fail the upload is the file exists
      * @param writePriority The <code>WritePriority</code> of this upload
      */
-    public WriteContext(String fileName, StreamContextSupplier streamContextSupplier, long fileSize,
-                        boolean failIfAlreadyExists, WritePriority writePriority, long checksum,
-                        UploadFinalizer uploadFinalizer) {
+    public WriteContext(
+        String fileName,
+        StreamContextSupplier streamContextSupplier,
+        long fileSize,
+        boolean failIfAlreadyExists,
+        WritePriority writePriority,
+        long checksum,
+        UploadFinalizer uploadFinalizer
+    ) {
         this.fileName = fileName;
         this.streamContextSupplier = streamContextSupplier;
         this.fileSize = fileSize;

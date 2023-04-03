@@ -23,6 +23,7 @@ public class ResettableCheckedInputStream extends FilterInputStream {
     private int partNumber;
     private int numberOfParts;
     private Supplier<Long> posSupplier;
+
     /**
      * Creates an input stream using the specified Checksum.
      * @param in the input stream
@@ -36,8 +37,18 @@ public class ResettableCheckedInputStream extends FilterInputStream {
         this.partNumber = partNumber;
         this.numberOfParts = numberOfParts;
         this.posSupplier = posSupplier;
-        System.out.println("Created stream from position: " + posSupplier.get() + ", partNumber: " + partNumber +
-            ", numberOfParts: " + numberOfParts + ", checksum: " + getChecksum() + " , file: " + file);
+        System.out.println(
+            "Created stream from position: "
+                + posSupplier.get()
+                + ", partNumber: "
+                + partNumber
+                + ", numberOfParts: "
+                + numberOfParts
+                + ", checksum: "
+                + getChecksum()
+                + " , file: "
+                + file
+        );
     }
 
     /**
@@ -48,8 +59,18 @@ public class ResettableCheckedInputStream extends FilterInputStream {
     public int read() throws IOException {
         byte[] buffer = new byte[1];
         int l = read(buffer, 0, 1);
-        System.out.println("Reading single byte from position: " + posSupplier.get() + ", partNumber: " + partNumber +
-            ", numberOfParts: " + numberOfParts + ", checksum: " + getChecksum() + " , file: " + file);
+        System.out.println(
+            "Reading single byte from position: "
+                + posSupplier.get()
+                + ", partNumber: "
+                + partNumber
+                + ", numberOfParts: "
+                + numberOfParts
+                + ", checksum: "
+                + getChecksum()
+                + " , file: "
+                + file
+        );
         return l;
     }
 
@@ -73,8 +94,18 @@ public class ResettableCheckedInputStream extends FilterInputStream {
         if (len != -1) {
             cksum.update(buf, off, len);
         }
-        System.out.println("Reading multiple bytes from position: " + posSupplier.get() + ", partNumber: " + partNumber +
-             ", numberOfParts: " + numberOfParts + ", checksum: " + getChecksum() + " , file: " + file);
+        System.out.println(
+            "Reading multiple bytes from position: "
+                + posSupplier.get()
+                + ", partNumber: "
+                + partNumber
+                + ", numberOfParts: "
+                + numberOfParts
+                + ", checksum: "
+                + getChecksum()
+                + " , file: "
+                + file
+        );
         return len;
     }
 
@@ -89,7 +120,7 @@ public class ResettableCheckedInputStream extends FilterInputStream {
         long total = 0;
         while (total < n) {
             long len = n - total;
-            len = read(buf, 0, len < buf.length ? (int)len : buf.length);
+            len = read(buf, 0, len < buf.length ? (int) len : buf.length);
             if (len == -1) {
                 return total;
             }
@@ -108,16 +139,36 @@ public class ResettableCheckedInputStream extends FilterInputStream {
 
     @Override
     public synchronized void mark(int readlimit) {
-        System.out.println("Mark stream called from position: " + posSupplier.get() + ", partNumber: " + partNumber +
-            ", numberOfParts: " + numberOfParts + ", checksum: " + getChecksum() + " , file: " + file);
+        System.out.println(
+            "Mark stream called from position: "
+                + posSupplier.get()
+                + ", partNumber: "
+                + partNumber
+                + ", numberOfParts: "
+                + numberOfParts
+                + ", checksum: "
+                + getChecksum()
+                + " , file: "
+                + file
+        );
         markedChecksum.reset(cksum.getValue());
         super.mark(readlimit);
     }
 
     @Override
     public synchronized void reset() throws IOException {
-        System.out.println("Reset stream called from position: " + posSupplier.get() + ", partNumber: " + partNumber +
-            ", numberOfParts: " + numberOfParts + ", checksum: " + getChecksum() + " , file: " + file);
+        System.out.println(
+            "Reset stream called from position: "
+                + posSupplier.get()
+                + ", partNumber: "
+                + partNumber
+                + ", numberOfParts: "
+                + numberOfParts
+                + ", checksum: "
+                + getChecksum()
+                + " , file: "
+                + file
+        );
         if (startPos == posSupplier.get()) {
             return;
         }

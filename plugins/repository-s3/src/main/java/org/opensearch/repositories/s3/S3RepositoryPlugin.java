@@ -104,6 +104,7 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
 
     private AsyncExecutorBuilder priorityExecutorBuilder;
     private AsyncExecutorBuilder normalExecutorBuilder;
+
     public S3RepositoryPlugin(final Settings settings, final Path configPath) {
         this(settings, configPath, new S3Service(configPath), new S3AsyncService(configPath));
     }
@@ -111,19 +112,14 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
     @Override
     public List<ExecutorBuilder<?>> getExecutorBuilders(Settings settings) {
         List<ExecutorBuilder<?>> executorBuilders = new ArrayList<>();
-        executorBuilders.add(new FixedExecutorBuilder(settings, PRIORITY_FUTURE_COMPLETION, 4, 10_000,
-            PRIORITY_FUTURE_COMPLETION));
-        executorBuilders.add(new FixedExecutorBuilder(settings, PRIORITY_STREAM_READER, 4, 10_000,
-            PRIORITY_STREAM_READER));
-        executorBuilders.add(new FixedExecutorBuilder(settings, FUTURE_COMPLETION, 1, 10_000,
-            FUTURE_COMPLETION));
-        executorBuilders.add(new FixedExecutorBuilder(settings, STREAM_READER, 1, 10_000,
-            STREAM_READER));
+        executorBuilders.add(new FixedExecutorBuilder(settings, PRIORITY_FUTURE_COMPLETION, 4, 10_000, PRIORITY_FUTURE_COMPLETION));
+        executorBuilders.add(new FixedExecutorBuilder(settings, PRIORITY_STREAM_READER, 4, 10_000, PRIORITY_STREAM_READER));
+        executorBuilders.add(new FixedExecutorBuilder(settings, FUTURE_COMPLETION, 1, 10_000, FUTURE_COMPLETION));
+        executorBuilders.add(new FixedExecutorBuilder(settings, STREAM_READER, 1, 10_000, STREAM_READER));
         return executorBuilders;
     }
 
-    S3RepositoryPlugin(final Settings settings, final Path configPath, final S3Service service,
-                       final S3AsyncService s3AsyncService) {
+    S3RepositoryPlugin(final Settings settings, final Path configPath, final S3Service service, final S3AsyncService s3AsyncService) {
         this.service = Objects.requireNonNull(service, "S3 service must not be null");
         this.configPath = configPath;
         // eagerly load client settings so that secure settings are read
@@ -147,10 +143,16 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
         final IndexNameExpressionResolver expressionResolver,
         final Supplier<RepositoriesService> repositoriesServiceSupplier
     ) {
-        this.priorityExecutorBuilder = new AsyncExecutorBuilder(threadPool.executor(PRIORITY_FUTURE_COMPLETION),
-            threadPool.executor(PRIORITY_STREAM_READER),  new TransferNIOGroup(4));
-        this.normalExecutorBuilder = new AsyncExecutorBuilder(threadPool.executor(FUTURE_COMPLETION),
-            threadPool.executor(STREAM_READER),  new TransferNIOGroup(1));
+        this.priorityExecutorBuilder = new AsyncExecutorBuilder(
+            threadPool.executor(PRIORITY_FUTURE_COMPLETION),
+            threadPool.executor(PRIORITY_STREAM_READER),
+            new TransferNIOGroup(4)
+        );
+        this.normalExecutorBuilder = new AsyncExecutorBuilder(
+            threadPool.executor(FUTURE_COMPLETION),
+            threadPool.executor(STREAM_READER),
+            new TransferNIOGroup(1)
+        );
         return Collections.emptyList();
     }
 
@@ -171,8 +173,17 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
             normalExecutorBuilder.getStreamReader(),
             priorityExecutorBuilder.getStreamReader()
         );
-        return new S3Repository(metadata, registry, service, clusterService, recoverySettings,
-            asyncUploadUtils, priorityExecutorBuilder, normalExecutorBuilder, s3AsyncService);
+        return new S3Repository(
+            metadata,
+            registry,
+            service,
+            clusterService,
+            recoverySettings,
+            asyncUploadUtils,
+            priorityExecutorBuilder,
+            normalExecutorBuilder,
+            s3AsyncService
+        );
     }
 
     @Override

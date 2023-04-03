@@ -101,16 +101,13 @@ public class TranslogTransferManager {
             );
             Map<Long, BlobPath> blobPathMap = new HashMap<>();
             toUpload.forEach(
-                fileSnapshot -> blobPathMap.put(fileSnapshot.getPrimaryTerm(),
-                    remoteBaseTransferPath.add(String.valueOf(fileSnapshot.getPrimaryTerm())))
+                fileSnapshot -> blobPathMap.put(
+                    fileSnapshot.getPrimaryTerm(),
+                    remoteBaseTransferPath.add(String.valueOf(fileSnapshot.getPrimaryTerm()))
+                )
             );
 
-            transferService.uploadBlobs(
-                toUpload,
-                blobPathMap,
-                latchedActionListener,
-                WritePriority.HIGH
-            );
+            transferService.uploadBlobs(toUpload, blobPathMap, latchedActionListener, WritePriority.HIGH);
 
             try {
                 if (latch.await(TRANSFER_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS) == false) {

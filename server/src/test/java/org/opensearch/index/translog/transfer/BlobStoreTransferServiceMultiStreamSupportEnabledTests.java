@@ -21,7 +21,6 @@ import org.opensearch.threadpool.TestThreadPool;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -33,10 +32,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -70,31 +65,28 @@ public class BlobStoreTransferServiceMultiStreamSupportEnabledTests extends Open
         TransferService transferService = new BlobStoreTransferService(blobStore, threadPool);
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean succeeded = new AtomicBoolean(false);
-        transferService.uploadBlobs(
-            Collections.singleton(transferFileSnapshot),
-            new HashMap<>() {{
+        transferService.uploadBlobs(Collections.singleton(transferFileSnapshot), new HashMap<>() {
+            {
                 put(transferFileSnapshot.getPrimaryTerm(), new BlobPath().add("sample_path"));
-            }},
-            new LatchedActionListener<>(new ActionListener<>() {
-                @Override
-                public void onResponse(FileSnapshot.TransferFileSnapshot fileSnapshot) {
-                    assert succeeded.compareAndSet(false, true);
-                    assertEquals(transferFileSnapshot.getPrimaryTerm(), fileSnapshot.getPrimaryTerm());
-                    assertEquals(transferFileSnapshot.getName(), fileSnapshot.getName());
-                    try {
-                        verify(blobContainer).writeBlobByStreams(any(WriteContext.class));
-                    } catch (IOException ex) {
-                        fail();
-                    }
+            }
+        }, new LatchedActionListener<>(new ActionListener<>() {
+            @Override
+            public void onResponse(FileSnapshot.TransferFileSnapshot fileSnapshot) {
+                assert succeeded.compareAndSet(false, true);
+                assertEquals(transferFileSnapshot.getPrimaryTerm(), fileSnapshot.getPrimaryTerm());
+                assertEquals(transferFileSnapshot.getName(), fileSnapshot.getName());
+                try {
+                    verify(blobContainer).writeBlobByStreams(any(WriteContext.class));
+                } catch (IOException ex) {
+                    fail();
                 }
+            }
 
-                @Override
-                public void onFailure(Exception e) {
-                    throw new AssertionError("Failed to perform uploadBlobAsync", e);
-                }
-            }, latch),
-            WritePriority.HIGH
-        );
+            @Override
+            public void onFailure(Exception e) {
+                throw new AssertionError("Failed to perform uploadBlobAsync", e);
+            }
+        }, latch), WritePriority.HIGH);
 
         assertTrue(latch.await(1000, TimeUnit.MILLISECONDS));
         assertTrue(succeeded.get());
@@ -113,30 +105,27 @@ public class BlobStoreTransferServiceMultiStreamSupportEnabledTests extends Open
 
         TransferService transferService = new BlobStoreTransferService(blobStore, threadPool);
         CountDownLatch latch = new CountDownLatch(1);
-        transferService.uploadBlobs(
-            Collections.singleton(transferFileSnapshot),
-            new HashMap<>() {{
+        transferService.uploadBlobs(Collections.singleton(transferFileSnapshot), new HashMap<>() {
+            {
                 put(transferFileSnapshot.getPrimaryTerm(), new BlobPath().add("sample_path"));
-            }},
-            new LatchedActionListener<>(new ActionListener<>() {
-                @Override
-                public void onResponse(FileSnapshot.TransferFileSnapshot fileSnapshot) {
-                    fail("Did not expect uploadBlobAsync to succeed");
-                }
+            }
+        }, new LatchedActionListener<>(new ActionListener<>() {
+            @Override
+            public void onResponse(FileSnapshot.TransferFileSnapshot fileSnapshot) {
+                fail("Did not expect uploadBlobAsync to succeed");
+            }
 
-                @Override
-                public void onFailure(Exception e) {
-                    try {
-                        verify(blobContainer).writeBlobByStreams(any(WriteContext.class));
-                    } catch (IOException ex) {
-                        fail();
-                    }
-                    assertTrue(e instanceof FileTransferException);
-                    assertTrue(e.getCause() instanceof IOException);
+            @Override
+            public void onFailure(Exception e) {
+                try {
+                    verify(blobContainer).writeBlobByStreams(any(WriteContext.class));
+                } catch (IOException ex) {
+                    fail();
                 }
-            }, latch),
-            WritePriority.HIGH
-        );
+                assertTrue(e instanceof FileTransferException);
+                assertTrue(e.getCause() instanceof IOException);
+            }
+        }, latch), WritePriority.HIGH);
 
         assertTrue(latch.await(1000, TimeUnit.MILLISECONDS));
     }

@@ -105,7 +105,8 @@ class S3Repository extends MeteredBlobStoreRepository {
     );
 
     private static final ByteSizeValue DEFAULT_MULTIPART_UPLOAD_MINIMUM_PART_SIZE = new ByteSizeValue(
-        ByteSizeUnit.MB.toBytes(5), ByteSizeUnit.BYTES
+        ByteSizeUnit.MB.toBytes(5),
+        ByteSizeUnit.BYTES
     );
 
     static final Setting<String> BUCKET_SETTING = Setting.simpleString("bucket");
@@ -223,6 +224,7 @@ class S3Repository extends MeteredBlobStoreRepository {
     private final S3AsyncService s3AsyncService;
     private final AsyncExecutorBuilder priorityExecutorBuilder;
     private final AsyncExecutorBuilder normalExecutorBuilder;
+
     /**
      * Constructs an s3 backed repository
      */
@@ -236,7 +238,7 @@ class S3Repository extends MeteredBlobStoreRepository {
         final AsyncExecutorBuilder priorityExecutorBuilder,
         final AsyncExecutorBuilder normalExecutorBuilder,
         final S3AsyncService s3AsyncService
-        ) {
+    ) {
         super(
             metadata,
             COMPRESS_SETTING.get(metadata.settings()),
@@ -352,8 +354,19 @@ class S3Repository extends MeteredBlobStoreRepository {
 
     @Override
     protected S3BlobStore createBlobStore() {
-        return new S3BlobStore(service, s3AsyncService, bucket, serverSideEncryption, bufferSize, cannedACL, storageClass,
-            repositoryMetadata, asyncUploadUtils, priorityExecutorBuilder, normalExecutorBuilder);
+        return new S3BlobStore(
+            service,
+            s3AsyncService,
+            bucket,
+            serverSideEncryption,
+            bufferSize,
+            cannedACL,
+            storageClass,
+            repositoryMetadata,
+            asyncUploadUtils,
+            priorityExecutorBuilder,
+            normalExecutorBuilder
+        );
     }
 
     // only use for testing
