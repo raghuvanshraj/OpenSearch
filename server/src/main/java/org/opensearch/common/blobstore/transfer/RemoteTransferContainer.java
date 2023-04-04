@@ -179,6 +179,7 @@ public class RemoteTransferContainer implements Closeable {
 
     private TransferPartStreamSupplier getTransferPartStreamSupplier() {
         return ((partNo, size, position) -> {
+            assert inputStreams.get() != null : "expected inputStreams to be initialised";
             if (localFile != null) {
                 return getMultiPartStreamSupplierForFile(partNo, size, position).get();
             } else {
@@ -194,20 +195,15 @@ public class RemoteTransferContainer implements Closeable {
     private LocalStreamSupplier<Stream> getMultiPartStreamSupplierForFile(final int streamIdx, final long size, final long position) {
         return () -> {
             try {
-                if (inputStreams.get() == null) {
-                    throw new IllegalArgumentException("InputStream parts not yet defined.");
-                }
                 OffsetRangeFileInputStream offsetRangeInputStream = new OffsetRangeFileInputStream(localFile, size, position);
                 ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(
                     offsetRangeInputStream,
                     localFileName,
-                    streamIdx,
-                    numberOfParts,
                     () -> {
                         try {
                             return offsetRangeInputStream.getFileChannel().position();
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            log.error("Error getting position of file channel", e);
                         }
                         return null;
                     }
@@ -225,16 +221,11 @@ public class RemoteTransferContainer implements Closeable {
     private LocalStreamSupplier<Stream> getMultiPartStreamSupplierForIndexInput(final int streamIdx, final long size, final long position) {
         return () -> {
             try {
-                if (inputStreams.get() == null) {
-                    throw new IllegalArgumentException("InputStream parts not yet defined.");
-                }
                 IndexInput indexInput = directory.openInput(localFileName, ioContext);
                 OffsetRangeIndexInputStream offsetRangeInputStream = new OffsetRangeIndexInputStream(indexInput, size, position);
                 ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(
                     offsetRangeInputStream,
                     localFileName,
-                    streamIdx,
-                    numberOfParts,
                     indexInput::getFilePointer
                 );
                 Objects.requireNonNull(inputStreams.get())[streamIdx] = checkedInputStream;

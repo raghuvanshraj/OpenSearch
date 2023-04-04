@@ -24,22 +24,18 @@ public class ResettableCheckedInputStream extends FilterInputStream {
     private final CRC32 markedChecksum;
     private final long startPos;
     private final String file;
-    private final int partNumber;
-    private final int numberOfParts;
     private final Supplier<Long> posSupplier;
 
     /**
      * Creates an input stream using the specified Checksum.
      * @param in the input stream
      */
-    public ResettableCheckedInputStream(InputStream in, String file, int partNumber, int numberOfParts, Supplier<Long> posSupplier) {
+    public ResettableCheckedInputStream(InputStream in, String file, Supplier<Long> posSupplier) {
         super(in);
         this.cksum = new CRC32();
         this.markedChecksum = new CRC32();
         this.startPos = posSupplier.get();
         this.file = file;
-        this.partNumber = partNumber;
-        this.numberOfParts = numberOfParts;
         this.posSupplier = posSupplier;
     }
 
@@ -50,7 +46,11 @@ public class ResettableCheckedInputStream extends FilterInputStream {
      */
     public int read() throws IOException {
         byte[] buffer = new byte[1];
-        return read(buffer, 0, 1);
+        int len = read(buffer, 0, 1);
+        if (len == -1) {
+            return -1;
+        }
+        return buffer[0];
     }
 
     /**
