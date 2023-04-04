@@ -188,7 +188,11 @@ public class RemoteTransferContainer implements Closeable {
         });
     }
 
-    private Supplier<Stream> getMultiPartStreamSupplierForFile(final int streamIdx, final long size, final long position) {
+    interface LocalStreamSupplier<Stream> {
+        Stream get() throws IOException;
+    }
+
+    private LocalStreamSupplier<Stream> getMultiPartStreamSupplierForFile(final int streamIdx, final long size, final long position) {
         return () -> {
             try {
                 if (inputStreams.get() == null) {
@@ -214,12 +218,12 @@ public class RemoteTransferContainer implements Closeable {
                 return new Stream(checkedInputStream, size, position);
             } catch (IOException e) {
                 log.error("Failed to create input stream", e);
-                return null;
+                throw e;
             }
         };
     }
 
-    private Supplier<Stream> getMultiPartStreamSupplierForIndexInput(final int streamIdx, final long size, final long position) {
+    private LocalStreamSupplier<Stream> getMultiPartStreamSupplierForIndexInput(final int streamIdx, final long size, final long position) {
         return () -> {
             try {
                 if (inputStreams.get() == null) {
@@ -239,7 +243,7 @@ public class RemoteTransferContainer implements Closeable {
                 return new Stream(checkedInputStream, size, position);
             } catch (IOException e) {
                 log.error("Failed to create input stream", e);
-                return null;
+                throw e;
             }
         };
     }
