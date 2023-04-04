@@ -8,6 +8,8 @@
 
 package org.opensearch.common;
 
+import java.io.IOException;
+
 /**
  * StreamProvider is used to supply streams to vendor plugins using <code>StreamProvider#provideStream</code>
  */
@@ -37,7 +39,7 @@ public class StreamProvider {
      * @param partNumber The index of the part
      * @return A stream reference to the part requested
      */
-    public Stream provideStream(int partNumber) {
+    public Stream provideStream(int partNumber) throws IOException {
         long position = partSize * partNumber;
         long size = (partNumber == numOfParts - 1) ? lastPartSize : partSize;
         return streamSupplier.supply(partNumber, size, position);
