@@ -31,6 +31,7 @@ import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 import software.amazon.awssdk.utils.CompletableFutureUtils;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -133,13 +134,23 @@ public final class AsyncUploadUtils {
         // The list of completed parts must be sorted
         AtomicReferenceArray<CompletedPart> completedParts = new AtomicReferenceArray<>(streamContext.getNumberOfParts());
 
-        List<CompletableFuture<CompletedPart>> futures = sendUploadPartRequests(
-            s3AsyncClient,
-            uploadRequest,
-            streamContext,
-            uploadId,
-            completedParts
-        );
+        List<CompletableFuture<CompletedPart>> futures;
+        try {
+            futures = sendUploadPartRequests(
+                s3AsyncClient,
+                uploadRequest,
+                streamContext,
+                uploadId,
+                completedParts
+            );
+        } catch (Exception ex) {
+            try {
+                cleanUpParts(s3AsyncClient, uploadRequest, uploadId);
+            } finally {
+                returnFuture.completeExceptionally(ex);
+            }
+            return;
+        }
 
         CompletableFutureUtils.allOfExceptionForwarded(futures.toArray(new CompletableFuture[0])).thenApply(resp -> {
             uploadRequest.getUploadFinalizer().accept(true);
@@ -232,7 +243,7 @@ public final class AsyncUploadUtils {
         StreamContext streamContext,
         String uploadId,
         AtomicReferenceArray<CompletedPart> completedParts
-    ) {
+    ) throws IOException {
         List<CompletableFuture<CompletedPart>> futures = new ArrayList<>();
 
         for (int partIdx = 0; partIdx < streamContext.getNumberOfParts(); partIdx++) {
