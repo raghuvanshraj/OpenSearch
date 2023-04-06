@@ -153,6 +153,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
             new S3BlobStore(
                 service,
                 null,
+                false,
                 "bucket",
                 S3Repository.SERVER_SIDE_ENCRYPTION_SETTING.getDefault(Settings.EMPTY),
                 bufferSize == null ? S3Repository.BUFFER_SIZE_SETTING.getDefault(Settings.EMPTY) : bufferSize,

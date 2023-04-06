@@ -160,7 +160,7 @@ class S3BlobContainer extends AbstractBlobContainer {
 
     @Override
     public boolean isMultiStreamUploadSupported() {
-        return blobStore.getAsyncUploadUtils().isMultipartUploadEnabled();
+        return blobStore.isMultipartUploadEnabled();
     }
 
     @Override
