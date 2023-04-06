@@ -222,6 +222,7 @@ class S3Repository extends MeteredBlobStoreRepository {
 
     private final AsyncUploadUtils asyncUploadUtils;
     private final S3AsyncService s3AsyncService;
+    private final boolean multipartUploadEnabled;
     private final AsyncExecutorBuilder priorityExecutorBuilder;
     private final AsyncExecutorBuilder normalExecutorBuilder;
 
@@ -237,7 +238,8 @@ class S3Repository extends MeteredBlobStoreRepository {
         final AsyncUploadUtils asyncUploadUtils,
         final AsyncExecutorBuilder priorityExecutorBuilder,
         final AsyncExecutorBuilder normalExecutorBuilder,
-        final S3AsyncService s3AsyncService
+        final S3AsyncService s3AsyncService,
+        final boolean multipartUploadEnabled
     ) {
         super(
             metadata,
@@ -249,6 +251,7 @@ class S3Repository extends MeteredBlobStoreRepository {
         );
         this.service = service;
         this.s3AsyncService = s3AsyncService;
+        this.multipartUploadEnabled = multipartUploadEnabled;
 
         this.repositoryMetadata = metadata;
         this.asyncUploadUtils = asyncUploadUtils;
@@ -357,6 +360,7 @@ class S3Repository extends MeteredBlobStoreRepository {
         return new S3BlobStore(
             service,
             s3AsyncService,
+            multipartUploadEnabled,
             bucket,
             serverSideEncryption,
             bufferSize,
