@@ -35,7 +35,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
-import java.util.function.Supplier;
 
 /**
  * RemoteTransferContainer is an encapsulation for managing transfers for translog and segment files.

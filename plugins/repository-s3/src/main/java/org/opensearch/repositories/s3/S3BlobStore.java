@@ -84,10 +84,12 @@ class S3BlobStore implements BlobStore {
     private final AsyncUploadUtils asyncUploadUtils;
     private final AsyncExecutorBuilder priorityExecutorBuilder;
     private final AsyncExecutorBuilder normalExecutorBuilder;
+    private final boolean multipartUploadEnabled;
 
     S3BlobStore(
         S3Service service,
         S3AsyncService s3AsyncService,
+        boolean multipartUploadEnabled,
         String bucket,
         boolean serverSideEncryption,
         ByteSizeValue bufferSize,
@@ -100,6 +102,7 @@ class S3BlobStore implements BlobStore {
     ) {
         this.service = service;
         this.s3AsyncService = s3AsyncService;
+        this.multipartUploadEnabled = multipartUploadEnabled;
         this.bucket = bucket;
         this.serverSideEncryption = serverSideEncryption;
         this.bufferSize = bufferSize;
@@ -137,6 +140,10 @@ class S3BlobStore implements BlobStore {
         };
         this.normalExecutorBuilder = normalExecutorBuilder;
         this.priorityExecutorBuilder = priorityExecutorBuilder;
+    }
+
+    public boolean isMultipartUploadEnabled() {
+        return multipartUploadEnabled;
     }
 
     private long getRequestCount(Request<?> request) {

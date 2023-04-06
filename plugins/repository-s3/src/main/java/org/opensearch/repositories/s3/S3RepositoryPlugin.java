@@ -168,7 +168,6 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
         final RecoverySettings recoverySettings
     ) {
         AsyncUploadUtils asyncUploadUtils = new AsyncUploadUtils(
-            S3Repository.PARALLEL_MULTIPART_UPLOAD_ENABLED_SETTING.get(metadata.settings()),
             S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.get(metadata.settings()).getBytes(),
             normalExecutorBuilder.getStreamReader(),
             priorityExecutorBuilder.getStreamReader()
@@ -182,7 +181,8 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
             asyncUploadUtils,
             priorityExecutorBuilder,
             normalExecutorBuilder,
-            s3AsyncService
+            s3AsyncService,
+            S3Repository.PARALLEL_MULTIPART_UPLOAD_ENABLED_SETTING.get(metadata.settings())
         );
     }
 

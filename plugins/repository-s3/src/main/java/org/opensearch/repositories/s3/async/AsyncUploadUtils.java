@@ -50,27 +50,16 @@ public final class AsyncUploadUtils {
     private final ExecutorService executorService;
     private final ExecutorService priorityExecutorService;
     private final long minimumPartSize;
-    private final boolean multipartUploadEnabled;
 
     /**
      * The max number of parts on S3 side is 10,000
      */
     private static final long MAX_UPLOAD_PARTS = 10_000;
 
-    public AsyncUploadUtils(
-        boolean multipartUploadEnabled,
-        long minimumPartSize,
-        ExecutorService executorService,
-        ExecutorService priorityExecutorService
-    ) {
+    public AsyncUploadUtils(long minimumPartSize, ExecutorService executorService, ExecutorService priorityExecutorService) {
         this.executorService = executorService;
         this.priorityExecutorService = priorityExecutorService;
         this.minimumPartSize = minimumPartSize;
-        this.multipartUploadEnabled = multipartUploadEnabled;
-    }
-
-    public boolean isMultipartUploadEnabled() {
-        return multipartUploadEnabled;
     }
 
     public CompletableFuture<UploadResponse> uploadObject(
@@ -136,13 +125,7 @@ public final class AsyncUploadUtils {
 
         List<CompletableFuture<CompletedPart>> futures;
         try {
-            futures = sendUploadPartRequests(
-                s3AsyncClient,
-                uploadRequest,
-                streamContext,
-                uploadId,
-                completedParts
-            );
+            futures = sendUploadPartRequests(s3AsyncClient, uploadRequest, streamContext, uploadId, completedParts);
         } catch (Exception ex) {
             try {
                 cleanUpParts(s3AsyncClient, uploadRequest, uploadId);
