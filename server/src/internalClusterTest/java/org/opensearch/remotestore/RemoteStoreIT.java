@@ -42,7 +42,7 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertHitCount;
 @OpenSearchIntegTestCase.ClusterScope(scope = OpenSearchIntegTestCase.Scope.TEST, numDataNodes = 0)
 public class RemoteStoreIT extends OpenSearchIntegTestCase {
 
-    private static final String REPOSITORY_NAME = "test-remore-store-repo";
+    protected static final String REPOSITORY_NAME = "test-remore-store-repo";
     private static final String INDEX_NAME = "remote-store-test-idx-1";
     private static final String TOTAL_OPERATIONS = "total-operations";
     private static final String REFRESHED_OR_FLUSHED_OPERATIONS = "refreshed-or-flushed-operations";
@@ -59,7 +59,7 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         return remoteStoreIndexSettings(0);
     }
 
-    private Settings remoteStoreIndexSettings(int numberOfReplicas) {
+    protected Settings remoteStoreIndexSettings(int numberOfReplicas) {
         return Settings.builder()
             .put(super.indexSettings())
             .put("index.refresh_interval", "300s")
@@ -98,14 +98,22 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
     public void setup() {
         internalCluster().startClusterManagerOnlyNode();
         Path absolutePath = randomRepoPath().toAbsolutePath();
+        putRepository(absolutePath);
+    }
+
+    protected void putRepository(Path path) {
         assertAcked(
-            clusterAdmin().preparePutRepository(REPOSITORY_NAME).setType("fs").setSettings(Settings.builder().put("location", absolutePath))
+            clusterAdmin().preparePutRepository(REPOSITORY_NAME).setType("fs").setSettings(Settings.builder().put("location", path))
         );
+    }
+
+    protected void deleteRepository() {
+        assertAcked(clusterAdmin().prepareDeleteRepository(REPOSITORY_NAME));
     }
 
     @After
     public void teardown() {
-        assertAcked(clusterAdmin().prepareDeleteRepository(REPOSITORY_NAME));
+        deleteRepository();
     }
 
     private IndexResponse indexSingleDoc() {
