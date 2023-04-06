@@ -362,6 +362,65 @@ public class RemoteSegmentStoreDirectoryTests extends OpenSearchTestCase {
         storeDirectory.close();
     }
 
+    public void testCopyFilesFromMultiStreamSupportEnabled() throws Exception {
+        String filename = "_100.si";
+        populateMetadata();
+        remoteSegmentStoreDirectory.init();
+
+        Directory storeDirectory = LuceneTestCase.newDirectory();
+        IndexOutput indexOutput = storeDirectory.createOutput(filename, IOContext.DEFAULT);
+        indexOutput.writeString("Hello World!");
+        CodecUtil.writeFooter(indexOutput);
+        indexOutput.close();
+        storeDirectory.sync(List.of(filename));
+
+        assertFalse(remoteSegmentStoreDirectory.getSegmentsUploadedToRemoteStore().containsKey(filename));
+
+        BlobContainer blobContainer = mock(BlobContainer.class);
+        when(remoteDataDirectory.getBlobContainer()).thenReturn(blobContainer);
+        when(blobContainer.isMultiStreamUploadSupported()).thenReturn(true);
+        CompletableFuture<UploadResponse> uploadResponseCompletableFuture = new CompletableFuture<>();
+        uploadResponseCompletableFuture.complete(new UploadResponse(true));
+        when(blobContainer.writeBlobByStreams(any(WriteContext.class))).thenReturn(uploadResponseCompletableFuture);
+
+        remoteSegmentStoreDirectory.copyFilesFrom(storeDirectory, List.of(filename), IOContext.DEFAULT);
+
+        assertTrue(remoteSegmentStoreDirectory.getSegmentsUploadedToRemoteStore().containsKey(filename));
+
+        storeDirectory.close();
+    }
+
+    public void testCopyFilesFromMultiStreamSupportEnabledIOException() throws Exception {
+        String filename = "_100.si";
+        populateMetadata();
+        remoteSegmentStoreDirectory.init();
+
+        Directory storeDirectory = LuceneTestCase.newDirectory();
+        IndexOutput indexOutput = storeDirectory.createOutput(filename, IOContext.DEFAULT);
+        indexOutput.writeString("Hello World!");
+        CodecUtil.writeFooter(indexOutput);
+        indexOutput.close();
+        storeDirectory.sync(List.of(filename));
+
+        assertFalse(remoteSegmentStoreDirectory.getSegmentsUploadedToRemoteStore().containsKey(filename));
+
+        BlobContainer blobContainer = mock(BlobContainer.class);
+        when(remoteDataDirectory.getBlobContainer()).thenReturn(blobContainer);
+        when(blobContainer.isMultiStreamUploadSupported()).thenReturn(true);
+        CompletableFuture<UploadResponse> uploadResponseCompletableFuture = new CompletableFuture<>();
+        uploadResponseCompletableFuture.complete(new UploadResponse(true));
+        when(blobContainer.writeBlobByStreams(any(WriteContext.class))).thenThrow(new IOException());
+
+        assertThrows(
+            IOException.class,
+            () -> remoteSegmentStoreDirectory.copyFilesFrom(storeDirectory, List.of(filename), IOContext.DEFAULT)
+        );
+
+        assertFalse(remoteSegmentStoreDirectory.getSegmentsUploadedToRemoteStore().containsKey(filename));
+
+        storeDirectory.close();
+    }
+
     public void testCopyFromException() throws IOException {
         String filename = "_100.si";
         Directory storeDirectory = LuceneTestCase.newDirectory();
