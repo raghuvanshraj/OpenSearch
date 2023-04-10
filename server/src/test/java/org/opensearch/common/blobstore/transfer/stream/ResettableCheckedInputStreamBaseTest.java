@@ -106,24 +106,27 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
                 testFile.getFileName().toString()
             );
             resettableCheckedInputStreams[readIdx] = resettableCheckedInputStream;
-            int finalRunIdx = readIdx;
             threads[readIdx] = new Thread(() -> {
                 try {
                     boolean streamMarked = false;
                     long streamMarkPosition = -1;
+                    long streamMarkChecksum = -1;
                     for (int byteIdx = 0; byteIdx < readByteCount - 1; byteIdx++) {
                         resettableCheckedInputStream.read();
                         if (!streamMarked && randomBoolean()) {
                             streamMarked = true;
                             streamMarkPosition = offsetRangeInputStream.getFilePointer();
                             resettableCheckedInputStream.mark(readByteCount);
+                            streamMarkChecksum = resettableCheckedInputStream.getChecksum();
                         }
                     }
                     if (!streamMarked) {
                         streamMarkPosition = offsetRangeInputStream.getFilePointer();
                         resettableCheckedInputStream.mark(readByteCount);
+                        streamMarkChecksum = resettableCheckedInputStream.getChecksum();
                     }
                     resettableCheckedInputStream.reset();
+                    assertEquals(streamMarkChecksum, resettableCheckedInputStream.getChecksum());
                     assertEquals(bytesToWrite[(int) streamMarkPosition], resettableCheckedInputStream.read());
                 } catch (IOException e) {
                     fail("Failure while reading bytes from offset stream");

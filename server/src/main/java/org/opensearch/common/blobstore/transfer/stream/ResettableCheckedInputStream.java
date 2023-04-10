@@ -8,6 +8,8 @@
 
 package org.opensearch.common.blobstore.transfer.stream;
 
+import com.jcraft.jzlib.CRC32;
+
 import java.io.FilterInputStream;
 import java.io.IOException;
 
@@ -16,7 +18,8 @@ import java.io.IOException;
  * mark and reset and modifies the file checksum during mark and reset calls.
  */
 public class ResettableCheckedInputStream extends FilterInputStream {
-
+    private final CRC32 checksum;
+    private final CRC32 markedChecksum;
     private final long startPos;
     private final String file;
     private final OffsetRangeInputStream offsetRangeInputStream;
@@ -29,6 +32,8 @@ public class ResettableCheckedInputStream extends FilterInputStream {
      */
     public ResettableCheckedInputStream(OffsetRangeInputStream offsetRangeInputStream, String file) throws IOException {
         super(offsetRangeInputStream);
+        this.checksum = new CRC32();
+        this.markedChecksum = new CRC32();
         this.offsetRangeInputStream = offsetRangeInputStream;
         this.startPos = offsetRangeInputStream.getFilePointer();
         this.file = file;
@@ -64,7 +69,11 @@ public class ResettableCheckedInputStream extends FilterInputStream {
      * @exception IOException if an I/O error has occurred
      */
     public int read(byte[] buf, int off, int len) throws IOException {
-        return in.read(buf, off, len);
+        len = in.read(buf, off, len);
+        if (len != -1) {
+            checksum.update(buf, off, len);
+        }
+        return len;
     }
 
     /**
@@ -87,8 +96,17 @@ public class ResettableCheckedInputStream extends FilterInputStream {
         return total;
     }
 
+    /**
+     * Returns the Checksum for this input stream.
+     * @return the Checksum value
+     */
+    public long getChecksum() {
+        return checksum.getValue();
+    }
+
     @Override
     public synchronized void mark(int readlimit) {
+        markedChecksum.reset(checksum.getValue());
         super.mark(readlimit);
     }
 
@@ -97,6 +115,7 @@ public class ResettableCheckedInputStream extends FilterInputStream {
         if (startPos == offsetRangeInputStream.getFilePointer()) {
             return;
         }
+        checksum.reset(markedChecksum.getValue());
         super.reset();
     }
 

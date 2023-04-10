@@ -8,6 +8,7 @@
 
 package org.opensearch.common.blobstore.transfer;
 
+import com.jcraft.jzlib.JZlib;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensearch.common.SetOnce;
@@ -17,8 +18,13 @@ import org.opensearch.common.TransferPartStreamSupplier;
 import org.opensearch.common.blobstore.stream.StreamContext;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
+import org.opensearch.common.blobstore.transfer.exception.CorruptedLocalFileException;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeFileInputStream;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeIndexInputStream;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeInputStream;
 import org.opensearch.common.blobstore.transfer.stream.ResettableCheckedInputStream;
+import org.opensearch.index.translog.ChannelFactory;
+import org.opensearch.index.translog.checked.TranslogCheckedContainer;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -41,12 +47,15 @@ public class RemoteTransferContainer implements Closeable {
     private final String remoteFileName;
     private final boolean failTransferIfFileExists;
     private final WritePriority writePriority;
+    private final long expectedChecksum;
     private final OffsetRangeInputStreamSupplier offsetRangeInputStreamSupplier;
 
     private static final Logger log = LogManager.getLogger(RemoteTransferContainer.class);
 
     /**
      * Construct a new RemoteTransferContainer object using {@link Path} reference to the file.
+     * This constructor calculates the <code>expectedChecksum</code> of the uploaded file internally by calling
+     * <code>TranslogCheckedContainer#getChecksum</code>
      *
      * @param localFileName                  Name of the local file
      * @param remoteFileName                 Name of the remote file
@@ -61,7 +70,8 @@ public class RemoteTransferContainer implements Closeable {
         long contentLength,
         boolean failTransferIfFileExists,
         WritePriority writePriority,
-        OffsetRangeInputStreamSupplier offsetRangeInputStreamSupplier
+        OffsetRangeInputStreamSupplier offsetRangeInputStreamSupplier,
+        long expectedChecksum
     ) {
         this.localFileName = localFileName;
         this.remoteFileName = remoteFileName;
@@ -69,6 +79,7 @@ public class RemoteTransferContainer implements Closeable {
         this.failTransferIfFileExists = failTransferIfFileExists;
         this.writePriority = writePriority;
         this.offsetRangeInputStreamSupplier = offsetRangeInputStreamSupplier;
+        this.expectedChecksum = expectedChecksum;
     }
 
     /**
@@ -81,6 +92,7 @@ public class RemoteTransferContainer implements Closeable {
             contentLength,
             failTransferIfFileExists,
             writePriority,
+            expectedChecksum,
             this::finalizeUpload
         );
     }
@@ -144,13 +156,45 @@ public class RemoteTransferContainer implements Closeable {
         };
     }
 
-    private void finalizeUpload(boolean uploadSuccessful) {}
+    private void finalizeUpload(boolean uploadSuccessful) {
+        if (uploadSuccessful) {
+            long actualChecksum = getActualChecksum();
+            if (actualChecksum != expectedChecksum) {
+                throw new RuntimeException(
+                    new CorruptedLocalFileException(
+                        "Data integrity check done after upload for file "
+                            + localFileName
+                            + " failed, actual checksum: "
+                            + actualChecksum
+                            + ", expected checksum: "
+                            + expectedChecksum
+                    )
+                );
+            }
+        }
+    }
 
     /**
      * @return The total content length of current upload
      */
     public long getContentLength() {
         return contentLength;
+    }
+
+    private long getActualChecksum() {
+        long checksum = Objects.requireNonNull(inputStreams.get())[0].getChecksum();
+        for (int checkSumIdx = 1; checkSumIdx < Objects.requireNonNull(inputStreams.get()).length - 1; checkSumIdx++) {
+            checksum = JZlib.crc32_combine(checksum, Objects.requireNonNull(inputStreams.get())[checkSumIdx].getChecksum(), partSize);
+        }
+        if (numberOfParts > 1) {
+            checksum = JZlib.crc32_combine(
+                checksum,
+                Objects.requireNonNull(inputStreams.get())[numberOfParts - 1].getChecksum(),
+                lastPartSize
+            );
+        }
+
+        return checksum;
     }
 
     @Override
