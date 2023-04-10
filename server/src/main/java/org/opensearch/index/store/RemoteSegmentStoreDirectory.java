@@ -8,6 +8,7 @@
 
 package org.opensearch.index.store;
 
+import com.jcraft.jzlib.JZlib;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
@@ -22,9 +23,10 @@ import org.opensearch.common.blobstore.stream.write.UploadResponse;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
 import org.opensearch.common.blobstore.transfer.RemoteTransferContainer;
-import org.opensearch.common.lucene.store.ByteArrayIndexInput;
-import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.common.io.VersionedCodecStreamWrapper;
+import org.opensearch.common.lucene.store.ByteArrayIndexInput;
+import org.opensearch.common.util.ByteUtils;
+import org.opensearch.index.store.exception.ChecksumCombinationException;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadataHandler;
 
@@ -46,6 +48,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.zip.CRC32;
 
 /**
  * A RemoteDirectory extension for remote segment store. We need to make sure we don't overwrite a segment file once uploaded.
@@ -63,6 +66,11 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
      * For example, _0.cfe in local filesystem will be uploaded to remote segment store as _0.cfe__gX7bNIIBrs0AUNsR2yEG
      */
     public static final String SEGMENT_NAME_UUID_SEPARATOR = "__";
+
+    /**
+     * Number of bytes in the segment file to store checksum
+     */
+    private static final int SEGMENT_CHECKSUM_BYTES = 8;
 
     public static final MetadataFilenameUtils.MetadataFilenameComparator METADATA_FILENAME_COMPARATOR =
         new MetadataFilenameUtils.MetadataFilenameComparator();
@@ -355,13 +363,15 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         throws Exception {
 
         AtomicReference<Exception> exceptionRef = new AtomicReference<>();
+        long expectedChecksum = calculateChecksumOfChecksum(from, src);
         RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
             from,
             ioContext,
             src,
             remoteFileName,
             true,
-            WritePriority.NORMAL
+            WritePriority.NORMAL,
+            expectedChecksum
         );
         WriteContext writeContext = remoteTransferContainer.createWriteContext();
         CompletableFuture<UploadResponse> uploadFuture = remoteDataDirectory.getBlobContainer().writeBlobByStreams(writeContext);
@@ -476,6 +486,27 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
     private String getChecksumOfLocalFile(Directory directory, String file) throws IOException {
         try (IndexInput indexInput = directory.openInput(file, IOContext.DEFAULT)) {
             return Long.toString(CodecUtil.retrieveChecksum(indexInput));
+        }
+    }
+
+    private long calculateChecksumOfChecksum(Directory directory, String file) throws IOException {
+        try (IndexInput indexInput = directory.openInput(file, IOContext.DEFAULT)) {
+            long storedChecksum = CodecUtil.retrieveChecksum(indexInput);
+            CRC32 checksumOfChecksum = new CRC32();
+            checksumOfChecksum.update(ByteUtils.toByteArrayBE(storedChecksum));
+            try {
+                return JZlib.crc32_combine(storedChecksum, checksumOfChecksum.getValue(), SEGMENT_CHECKSUM_BYTES);
+            } catch (Exception e) {
+                throw new ChecksumCombinationException(
+                    "Potentially corrupted file: Checksum combination failed while combining stored checksum "
+                        + "and calculated checksum of stored checksum in segment file: "
+                        + file
+                        + ", directory: "
+                        + directory,
+                    file,
+                    e
+                );
+            }
         }
     }
 

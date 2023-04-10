@@ -8,6 +8,8 @@
 
 package org.opensearch.common.blobstore.transfer.stream;
 
+import com.jcraft.jzlib.CRC32;
+
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,20 +20,20 @@ import java.util.function.Supplier;
  * mark and reset and modifies the file checksum during mark and reset calls.
  */
 public class ResettableCheckedInputStream extends FilterInputStream {
-
+    private final CRC32 checksum;
+    private final CRC32 markedChecksum;
     private final long startPos;
     private final String file;
     private final Supplier<Long> posSupplier;
 
     /**
-     * Creates a new ResettableCheckedInputStream object
-     *
-     * @param in The underlying input stream
-     * @param file Name of the file
-     * @param posSupplier A supplier to fetch the current position of the file pointer
+     * Creates an input stream using the specified Checksum.
+     * @param in the input stream
      */
     public ResettableCheckedInputStream(InputStream in, String file, Supplier<Long> posSupplier) {
         super(in);
+        this.checksum = new CRC32();
+        this.markedChecksum = new CRC32();
         this.startPos = posSupplier.get();
         this.file = file;
         this.posSupplier = posSupplier;
@@ -67,7 +69,11 @@ public class ResettableCheckedInputStream extends FilterInputStream {
      * @exception IOException if an I/O error has occurred
      */
     public int read(byte[] buf, int off, int len) throws IOException {
-        return in.read(buf, off, len);
+        len = in.read(buf, off, len);
+        if (len != -1) {
+            checksum.update(buf, off, len);
+        }
+        return len;
     }
 
     /**
@@ -90,8 +96,17 @@ public class ResettableCheckedInputStream extends FilterInputStream {
         return total;
     }
 
+    /**
+     * Returns the Checksum for this input stream.
+     * @return the Checksum value
+     */
+    public long getChecksum() {
+        return checksum.getValue();
+    }
+
     @Override
     public synchronized void mark(int readlimit) {
+        markedChecksum.reset(checksum.getValue());
         super.mark(readlimit);
     }
 
@@ -100,6 +115,7 @@ public class ResettableCheckedInputStream extends FilterInputStream {
         if (startPos == posSupplier.get()) {
             return;
         }
+        checksum.reset(markedChecksum.getValue());
         super.reset();
     }
 

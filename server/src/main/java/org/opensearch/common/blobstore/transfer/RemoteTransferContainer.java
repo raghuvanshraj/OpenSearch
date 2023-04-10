@@ -8,6 +8,7 @@
 
 package org.opensearch.common.blobstore.transfer;
 
+import com.jcraft.jzlib.JZlib;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.store.Directory;
@@ -20,10 +21,12 @@ import org.opensearch.common.TransferPartStreamSupplier;
 import org.opensearch.common.blobstore.stream.StreamContext;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
+import org.opensearch.common.blobstore.transfer.exception.CorruptedLocalFileException;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeFileInputStream;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeIndexInputStream;
 import org.opensearch.common.blobstore.transfer.stream.ResettableCheckedInputStream;
 import org.opensearch.index.translog.ChannelFactory;
+import org.opensearch.index.translog.checked.TranslogCheckedContainer;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -51,11 +54,14 @@ public class RemoteTransferContainer implements Closeable {
     private final String remoteFileName;
     private final boolean failTransferIfFileExists;
     private final WritePriority writePriority;
+    private final long expectedChecksum;
 
     private static final Logger log = LogManager.getLogger(RemoteTransferContainer.class);
 
     /**
      * Construct a new RemoteTransferContainer object using {@link Path} reference to the file.
+     * This constructor calculates the <code>expectedChecksum</code> of the uploaded file internally by calling
+     * <code>TranslogCheckedContainer#getChecksum</code>
      *
      * @param localFile A {@link Path} reference to the local file
      * @param localFileName Name of the local file
@@ -81,6 +87,13 @@ public class RemoteTransferContainer implements Closeable {
         localFile.getFileSystem().provider();
         try (FileChannel channel = channelFactory.open(localFile, StandardOpenOption.READ)) {
             this.contentLength = channel.size();
+            TranslogCheckedContainer translogCheckedContainer = new TranslogCheckedContainer(
+                channel,
+                0,
+                (int) contentLength,
+                localFileName
+            );
+            this.expectedChecksum = translogCheckedContainer.getChecksum();
         }
     }
 
@@ -91,6 +104,7 @@ public class RemoteTransferContainer implements Closeable {
      * @param remoteFileName Name of the remote file
      * @param failTransferIfFileExists A boolean to determine if upload has to be failed if file exists
      * @param writePriority The {@link WritePriority} of current upload
+     * @param expectedChecksum Expected checksum of the uploaded file which will be used in post upload data integrity checks
      * @throws IOException If opening {@link IndexInput} on local file fails
      */
     public RemoteTransferContainer(
@@ -99,11 +113,13 @@ public class RemoteTransferContainer implements Closeable {
         String localFileName,
         String remoteFileName,
         boolean failTransferIfFileExists,
-        WritePriority writePriority
+        WritePriority writePriority,
+        long expectedChecksum
     ) throws IOException {
         this.localFileName = localFileName;
         this.remoteFileName = remoteFileName;
         this.directory = directory;
+        this.expectedChecksum = expectedChecksum;
         this.failTransferIfFileExists = failTransferIfFileExists;
         try (IndexInput indexInput = directory.openInput(this.localFileName, ioContext)) {
             this.contentLength = indexInput.length();
@@ -122,6 +138,7 @@ public class RemoteTransferContainer implements Closeable {
             contentLength,
             failTransferIfFileExists,
             writePriority,
+            expectedChecksum,
             this::finalizeUpload
         );
     }
@@ -213,13 +230,45 @@ public class RemoteTransferContainer implements Closeable {
         };
     }
 
-    private void finalizeUpload(boolean uploadSuccessful) {}
+    private void finalizeUpload(boolean uploadSuccessful) {
+        if (uploadSuccessful) {
+            long actualChecksum = getActualChecksum();
+            if (actualChecksum != expectedChecksum) {
+                throw new RuntimeException(
+                    new CorruptedLocalFileException(
+                        "Data integrity check done after upload for file "
+                            + localFileName
+                            + " failed, actual checksum: "
+                            + actualChecksum
+                            + ", expected checksum: "
+                            + expectedChecksum
+                    )
+                );
+            }
+        }
+    }
 
     /**
      * @return The total content length of current upload
      */
     public long getContentLength() {
         return contentLength;
+    }
+
+    private long getActualChecksum() {
+        long checksum = Objects.requireNonNull(inputStreams.get())[0].getChecksum();
+        for (int checkSumIdx = 1; checkSumIdx < Objects.requireNonNull(inputStreams.get()).length - 1; checkSumIdx++) {
+            checksum = JZlib.crc32_combine(checksum, Objects.requireNonNull(inputStreams.get())[checkSumIdx].getChecksum(), partSize);
+        }
+        if (numberOfParts > 1) {
+            checksum = JZlib.crc32_combine(
+                checksum,
+                Objects.requireNonNull(inputStreams.get())[numberOfParts - 1].getChecksum(),
+                lastPartSize
+            );
+        }
+
+        return checksum;
     }
 
     @Override

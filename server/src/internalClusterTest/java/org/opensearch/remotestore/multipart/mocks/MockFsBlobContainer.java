@@ -97,6 +97,7 @@ public class MockFsBlobContainer extends FsBlobContainer {
             );
         }
         completableFuture.complete(new UploadResponse(true));
+        writeContext.getUploadFinalizer().accept(true);
 
         return completableFuture;
     }
