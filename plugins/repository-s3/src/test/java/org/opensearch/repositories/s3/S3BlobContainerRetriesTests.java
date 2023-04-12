@@ -288,7 +288,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
     }
 
     public void testWriteBlobByStreamsWithRetries() throws Exception {
-        final int maxRetries = randomInt(0);
+        final int maxRetries = randomInt(5);
         final CountDown countDown = new CountDown(maxRetries + 1);
 
         final byte[] bytes = randomBlobContent();
@@ -370,6 +370,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
             }
         ));
 
+        // wait for completableFuture to finish
         completableFuture.get();
 
         assertThat(countDown.isCountedDown(), is(true));
