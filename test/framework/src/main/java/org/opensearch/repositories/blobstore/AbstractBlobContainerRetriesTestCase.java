@@ -34,6 +34,11 @@ package org.opensearch.repositories.blobstore;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.apache.hc.core5.http.ConnectionClosedException;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.lucene.store.IndexInput;
+import org.junit.After;
+import org.junit.Before;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.SuppressForbidden;
 import org.opensearch.common.blobstore.BlobContainer;
@@ -44,10 +49,6 @@ import org.opensearch.common.unit.ByteSizeValue;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.concurrent.CountDown;
 import org.opensearch.test.OpenSearchTestCase;
-import org.apache.hc.core5.http.ConnectionClosedException;
-import org.apache.hc.core5.http.HttpStatus;
-import org.junit.After;
-import org.junit.Before;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -482,6 +483,75 @@ public abstract class AbstractBlobContainerRetriesTestCase extends OpenSearchTes
         @Override
         public void close() {
             closed.set(true);
+        }
+
+        private void ensureOpen() throws IOException {
+            if (closed.get()) {
+                throw new IOException("Stream closed");
+            }
+        }
+    }
+
+    /**
+     * An IndexInput implementation that serves only zeroes
+     */
+    public class ZeroIndexInput extends IndexInput {
+
+        private final AtomicBoolean closed = new AtomicBoolean(false);
+        private final AtomicLong reads = new AtomicLong(0);
+        private final long length;
+
+        /**
+         * @param resourceDescription resourceDescription should be a non-null, opaque string describing this resource; it's returned
+         *                            from {@link #toString}.
+         */
+        public ZeroIndexInput(String resourceDescription, final long length) {
+            super(resourceDescription);
+            this.length = length;
+        }
+
+        @Override
+        public void close() throws IOException {
+            closed.set(true);
+        }
+
+        @Override
+        public long getFilePointer() {
+            return reads.get();
+        }
+
+        @Override
+        public void seek(long pos) throws IOException {
+            reads.set(pos);
+        }
+
+        @Override
+        public long length() {
+            return length;
+        }
+
+        @Override
+        public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
+            return new ZeroIndexInput(sliceDescription, length);
+        }
+
+        @Override
+        public byte readByte() throws IOException {
+            ensureOpen();
+            return (byte) ((reads.incrementAndGet() <= length) ? 0 : -1);
+        }
+
+        @Override
+        public void readBytes(byte[] b, int offset, int len) throws IOException {
+            ensureOpen();
+            final long available = available();
+            final int toCopy = Math.min(len, (int) available);
+            Arrays.fill(b, offset, offset + toCopy, (byte) 0);
+            reads.addAndGet(toCopy);
+        }
+
+        private long available() {
+            return Math.max(length - reads.get(), 0);
         }
 
         private void ensureOpen() throws IOException {

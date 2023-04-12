@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BiFunction;
@@ -269,6 +270,11 @@ public final class AsyncUploadUtils {
         CompletableFuture<CompletedPart> convertFuture = uploadPartResponseFuture.thenApply(
             uploadPartResponse -> convertUploadPartResponse(completedParts, uploadPartResponse, partNumber)
         );
+//        try {
+//            uploadPartResponseFuture.get();
+//        } catch (InterruptedException | ExecutionException e) {
+//            throw new RuntimeException(e);
+//        }
         futures.add(convertFuture);
 
         CompletableFutureUtils.forwardExceptionTo(convertFuture, uploadPartResponseFuture);
