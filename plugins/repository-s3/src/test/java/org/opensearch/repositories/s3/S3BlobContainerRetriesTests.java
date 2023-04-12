@@ -526,7 +526,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
         final BlobContainer blobContainer = createBlobContainer(null, readTimeout, true, bufferSize);
 
 //        final int parts = randomIntBetween(1, 5);
-        final int parts = 2;
+        final int parts = 5;
         final long lastPartSize = randomLongBetween(10, 512);
         final long blobSize = (parts * bufferSize.getBytes()) + lastPartSize;
 
