@@ -36,6 +36,7 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.Protocol;
 import org.opensearch.common.Strings;
 import org.opensearch.common.SuppressForbidden;
+import org.opensearch.common.blobstore.stream.write.WritePriority;
 import org.opensearch.common.io.PathUtils;
 import org.opensearch.common.logging.DeprecationLogger;
 import org.opensearch.common.settings.SecureSetting;
@@ -167,7 +168,35 @@ final class S3ClientSettings {
     static final Setting.AffixSetting<TimeValue> READ_TIMEOUT_SETTING = Setting.affixKeySetting(
         PREFIX,
         "read_timeout",
-        key -> Setting.timeSetting(key, TimeValue.timeValueMillis(ClientConfiguration.DEFAULT_SOCKET_TIMEOUT), Property.NodeScope)
+        key -> Setting.timeSetting(key, TimeValue.timeValueMinutes(2), Property.NodeScope)
+    );
+
+    /** The request timeout for connecting to s3. */
+    static final Setting.AffixSetting<TimeValue> REQUEST_TIMEOUT_SETTING = Setting.affixKeySetting(
+        PREFIX,
+        "request_timeout",
+        key -> Setting.timeSetting(key, TimeValue.timeValueMinutes(2), Property.NodeScope)
+    );
+
+    /** The connection timeout for connecting to s3. */
+    static final Setting.AffixSetting<TimeValue> CONNECTION_TIMEOUT_SETTING = Setting.affixKeySetting(
+        PREFIX,
+        "connection_timeout",
+        key -> Setting.timeSetting(key, TimeValue.timeValueMinutes(1), Property.NodeScope)
+    );
+
+    /** The connection TTL for connecting to s3. */
+    static final Setting.AffixSetting<TimeValue> CONNECTION_TTL_SETTING = Setting.affixKeySetting(
+        PREFIX,
+        "connection_ttl",
+        key -> Setting.timeSetting(key, TimeValue.timeValueMillis(5000), Property.NodeScope)
+    );
+
+    /** The maximum connections to s3. */
+    static final Setting.AffixSetting<Integer> MAX_CONNECTIONS_SETTING = Setting.affixKeySetting(
+        PREFIX,
+        "max_connections",
+        key -> Setting.intSetting(key, 50, Property.NodeScope)
     );
 
     /** The number of retries to use when an s3 request fails. */
@@ -230,6 +259,30 @@ final class S3ClientSettings {
     /** The read timeout for the s3 client. */
     final int readTimeoutMillis;
 
+    /** The request timeout for the s3 client */
+    final int requestTimeoutMillis;
+
+    /** The connection timeout for the s3 client */
+    final int connectionTimeoutMillis;
+
+    /** The connection TTL for the s3 client */
+    final int connectionTTLMillis;
+
+    /** The max number of connections for the s3 client */
+    final int maxConnections;
+
+    // /** The connection timeout for the s3 async client */
+    // final int connectionV2TimeoutMillis;
+    //
+    // /** The max number of requests pending to acquire connection for the s3 async client */
+    // final int maxPendingAcquireConnections;
+    //
+    // /** The max number of connections for the s3 async client */
+    // final int maxV2Connections;
+    //
+    // /** The connnection acquisition timeout for the s3 async client */
+    // final int connectionAcquisitionTimeout;
+
     /** The number of retries to use for the s3 client. */
     final int maxRetries;
 
@@ -248,32 +301,53 @@ final class S3ClientSettings {
     /** Signer override to use or empty string to use default. */
     final String signerOverride;
 
+    // Priority of remote upload. Based on this callback bandwidth is provided via thread pool.
+    final WritePriority writePriority;
+
+    final int eventLoopThreads;
+
     private S3ClientSettings(
         S3BasicCredentials credentials,
         IrsaCredentials irsaCredentials,
         String endpoint,
         Protocol protocol,
         int readTimeoutMillis,
+        int requestTimeoutMillis,
+        int connectionTimeoutMillis,
+        int connectionTTLMillis,
+        int maxConnections,
         int maxRetries,
         boolean throttleRetries,
         boolean pathStyleAccess,
         boolean disableChunkedEncoding,
         String region,
         String signerOverride,
-        ProxySettings proxySettings
+        ProxySettings proxySettings,
+        WritePriority writePriority,
+        int eventLoopThreads
     ) {
         this.credentials = credentials;
         this.irsaCredentials = irsaCredentials;
         this.endpoint = endpoint;
         this.protocol = protocol;
         this.readTimeoutMillis = readTimeoutMillis;
+        this.requestTimeoutMillis = requestTimeoutMillis;
+        this.connectionTimeoutMillis = connectionTimeoutMillis;
+        this.connectionTTLMillis = connectionTTLMillis;
         this.maxRetries = maxRetries;
+        this.maxConnections = maxConnections;
         this.throttleRetries = throttleRetries;
         this.pathStyleAccess = pathStyleAccess;
         this.disableChunkedEncoding = disableChunkedEncoding;
         this.region = region;
         this.signerOverride = signerOverride;
         this.proxySettings = proxySettings;
+        this.writePriority = writePriority;
+        this.eventLoopThreads = eventLoopThreads;
+    }
+
+    S3ClientSettings refine(Settings repositorySettings) {
+        return refine(repositorySettings, WritePriority.NORMAL, 0);
     }
 
     /**
@@ -282,7 +356,7 @@ final class S3ClientSettings {
      * @param repositorySettings found in repository metadata
      * @return S3ClientSettings
      */
-    S3ClientSettings refine(Settings repositorySettings) {
+    S3ClientSettings refine(Settings repositorySettings, WritePriority newWritePriority, int newEventLoopThreads) {
         // Normalize settings to placeholder client settings prefix so that we can use the affix settings directly
         final Settings normalizedSettings = Settings.builder()
             .put(repositorySettings)
@@ -298,6 +372,17 @@ final class S3ClientSettings {
         final int newReadTimeoutMillis = Math.toIntExact(
             getRepoSettingOrDefault(READ_TIMEOUT_SETTING, normalizedSettings, TimeValue.timeValueMillis(readTimeoutMillis)).millis()
         );
+        final int newRequestTimeoutMillis = Math.toIntExact(
+            getRepoSettingOrDefault(REQUEST_TIMEOUT_SETTING, normalizedSettings, TimeValue.timeValueMillis(requestTimeoutMillis)).millis()
+        );
+        final int newConnectionTimeoutMillis = Math.toIntExact(
+            getRepoSettingOrDefault(CONNECTION_TIMEOUT_SETTING, normalizedSettings, TimeValue.timeValueMillis(connectionTimeoutMillis))
+                .millis()
+        );
+        final int newConnectionTTLMillis = Math.toIntExact(
+            getRepoSettingOrDefault(CONNECTION_TTL_SETTING, normalizedSettings, TimeValue.timeValueMillis(connectionTTLMillis)).millis()
+        );
+        final int newMaxConnections = Math.toIntExact(getRepoSettingOrDefault(MAX_CONNECTIONS_SETTING, normalizedSettings, maxConnections));
         final int newMaxRetries = getRepoSettingOrDefault(MAX_RETRIES_SETTING, normalizedSettings, maxRetries);
         final boolean newThrottleRetries = getRepoSettingOrDefault(USE_THROTTLE_RETRIES_SETTING, normalizedSettings, throttleRetries);
         final boolean newPathStyleAccess = getRepoSettingOrDefault(USE_PATH_STYLE_ACCESS, normalizedSettings, pathStyleAccess);
@@ -319,13 +404,19 @@ final class S3ClientSettings {
             && Objects.equals(proxySettings.getHostName(), newProxyHost)
             && proxySettings.getPort() == newProxyPort
             && newReadTimeoutMillis == readTimeoutMillis
+            && newRequestTimeoutMillis == requestTimeoutMillis
+            && newConnectionTimeoutMillis == connectionTimeoutMillis
+            && newConnectionTTLMillis == connectionTTLMillis
+            && newMaxConnections == maxConnections
             && maxRetries == newMaxRetries
             && newThrottleRetries == throttleRetries
             && Objects.equals(credentials, newCredentials)
             && newPathStyleAccess == pathStyleAccess
             && newDisableChunkedEncoding == disableChunkedEncoding
             && Objects.equals(region, newRegion)
-            && Objects.equals(signerOverride, newSignerOverride)) {
+            && Objects.equals(signerOverride, newSignerOverride)
+            && Objects.equals(writePriority, newWritePriority)
+            && Objects.equals(eventLoopThreads, newEventLoopThreads)) {
             return this;
         }
 
@@ -336,13 +427,19 @@ final class S3ClientSettings {
             newEndpoint,
             newProtocol,
             newReadTimeoutMillis,
+            newRequestTimeoutMillis,
+            newConnectionTimeoutMillis,
+            newConnectionTTLMillis,
+            newMaxConnections,
             newMaxRetries,
             newThrottleRetries,
             newPathStyleAccess,
             newDisableChunkedEncoding,
             newRegion,
             newSignerOverride,
-            proxySettings.recreateWithNewHostAndPort(newProxyHost, newProxyPort)
+            proxySettings.recreateWithNewHostAndPort(newProxyHost, newProxyPort),
+            newWritePriority,
+            newEventLoopThreads
         );
     }
 
@@ -351,18 +448,27 @@ final class S3ClientSettings {
      *
      * Note this will always at least return a client named "default".
      */
-    static Map<String, S3ClientSettings> load(final Settings settings, final Path configPath) {
+    static Map<String, S3ClientSettings> load(
+        final Settings settings,
+        final Path configPath,
+        WritePriority writePriority,
+        int eventLoopThreads
+    ) {
         final Set<String> clientNames = settings.getGroups(PREFIX).keySet();
         final Map<String, S3ClientSettings> clients = new HashMap<>();
         for (final String clientName : clientNames) {
-            clients.put(clientName, getClientSettings(settings, clientName, configPath));
+            clients.put(clientName, getClientSettings(settings, clientName, configPath, writePriority, eventLoopThreads));
         }
         if (clients.containsKey("default") == false) {
             // this won't find any settings under the default client,
             // but it will pull all the fallback static settings
-            clients.put("default", getClientSettings(settings, "default", configPath));
+            clients.put("default", getClientSettings(settings, "default", configPath, writePriority, eventLoopThreads));
         }
         return Collections.unmodifiableMap(clients);
+    }
+
+    static Map<String, S3ClientSettings> load(final Settings settings, final Path configPath) {
+        return load(settings, configPath, WritePriority.NORMAL, 0);
     }
 
     static boolean checkDeprecatedCredentials(Settings repositorySettings) {
@@ -453,7 +559,13 @@ final class S3ClientSettings {
 
     // pkg private for tests
     /** Parse settings for a single client. */
-    static S3ClientSettings getClientSettings(final Settings settings, final String clientName, final Path configPath) {
+    static S3ClientSettings getClientSettings(
+        final Settings settings,
+        final String clientName,
+        final Path configPath,
+        WritePriority writePriority,
+        int eventLoopThreads
+    ) {
         final Protocol awsProtocol = getConfigValue(settings, clientName, PROTOCOL_SETTING);
         return new S3ClientSettings(
             S3ClientSettings.loadCredentials(settings, clientName),
@@ -461,14 +573,24 @@ final class S3ClientSettings {
             getConfigValue(settings, clientName, ENDPOINT_SETTING),
             awsProtocol,
             Math.toIntExact(getConfigValue(settings, clientName, READ_TIMEOUT_SETTING).millis()),
+            Math.toIntExact(getConfigValue(settings, clientName, REQUEST_TIMEOUT_SETTING).millis()),
+            Math.toIntExact(getConfigValue(settings, clientName, CONNECTION_TIMEOUT_SETTING).millis()),
+            Math.toIntExact(getConfigValue(settings, clientName, CONNECTION_TTL_SETTING).millis()),
+            Math.toIntExact(getConfigValue(settings, clientName, MAX_CONNECTIONS_SETTING)),
             getConfigValue(settings, clientName, MAX_RETRIES_SETTING),
             getConfigValue(settings, clientName, USE_THROTTLE_RETRIES_SETTING),
             getConfigValue(settings, clientName, USE_PATH_STYLE_ACCESS),
             getConfigValue(settings, clientName, DISABLE_CHUNKED_ENCODING),
             getConfigValue(settings, clientName, REGION),
             getConfigValue(settings, clientName, SIGNER_OVERRIDE),
-            validateAndCreateProxySettings(settings, clientName, awsProtocol)
+            validateAndCreateProxySettings(settings, clientName, awsProtocol),
+            writePriority,
+            eventLoopThreads
         );
+    }
+
+    static S3ClientSettings getClientSettings(final Settings settings, final String clientName, final Path configPath) {
+        return getClientSettings(settings, clientName, configPath, WritePriority.NORMAL, 0);
     }
 
     static ProxySettings validateAndCreateProxySettings(final Settings settings, final String clientName, final Protocol awsProtocol) {
@@ -530,6 +652,10 @@ final class S3ClientSettings {
         }
         final S3ClientSettings that = (S3ClientSettings) o;
         return readTimeoutMillis == that.readTimeoutMillis
+            && requestTimeoutMillis == that.requestTimeoutMillis
+            && connectionTimeoutMillis == that.connectionTimeoutMillis
+            && connectionTTLMillis == that.connectionTTLMillis
+            && maxConnections == that.maxConnections
             && maxRetries == that.maxRetries
             && throttleRetries == that.throttleRetries
             && Objects.equals(credentials, that.credentials)
@@ -550,6 +676,10 @@ final class S3ClientSettings {
             protocol,
             proxySettings,
             readTimeoutMillis,
+            requestTimeoutMillis,
+            connectionTimeoutMillis,
+            connectionTTLMillis,
+            maxConnections,
             maxRetries,
             throttleRetries,
             disableChunkedEncoding,
