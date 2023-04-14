@@ -10,6 +10,7 @@ package org.opensearch.repositories.s3.async;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.common.Stream;
 import org.opensearch.common.blobstore.stream.StreamContext;
 import org.opensearch.common.blobstore.stream.write.UploadResponse;
@@ -173,7 +174,7 @@ public final class AsyncUploadUtils {
         AtomicReferenceArray<CompletedPart> completedParts
     ) {
 
-        log.debug(() -> String.format("Sending completeMultipartUploadRequest, uploadId: %s", uploadId));
+        log.debug(() -> new ParameterizedMessage("Sending completeMultipartUploadRequest, uploadId: {}", uploadId));
         CompletedPart[] parts = IntStream.range(0, completedParts.length()).mapToObj(completedParts::get).toArray(CompletedPart[]::new);
         CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
             .bucket(uploadRequest.getBucket())
@@ -194,9 +195,9 @@ public final class AsyncUploadUtils {
             .build();
         SocketAccess.doPrivileged(() -> s3AsyncClient.abortMultipartUpload(abortMultipartUploadRequest).exceptionally(throwable -> {
             log.warn(
-                () -> String.format(
+                () -> new ParameterizedMessage(
                     "Failed to abort previous multipart upload "
-                        + "(id: %s)"
+                        + "(id: {})"
                         + ". You may need to call "
                         + "S3AsyncClient#abortMultiPartUpload to "
                         + "free all storage consumed by"

@@ -146,18 +146,18 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
         this.priorityExecutorBuilder = new AsyncExecutorBuilder(
             threadPool.executor(PRIORITY_FUTURE_COMPLETION),
             threadPool.executor(PRIORITY_STREAM_READER),
-            new TransferNIOGroup(4)
+            new TransferNIOGroup(
+                S3Repository.PRIORITY_UPLOAD_EVENT_LOOP_THREAD_COUNT_SETTING.get(clusterService.getSettings())
+            )
         );
         this.normalExecutorBuilder = new AsyncExecutorBuilder(
             threadPool.executor(FUTURE_COMPLETION),
             threadPool.executor(STREAM_READER),
-            new TransferNIOGroup(1)
+            new TransferNIOGroup(
+                S3Repository.NORMAL_UPLOAD_EVENT_LOOP_THREAD_COUNT_SETTING.get(clusterService.getSettings())
+            )
         );
         return Collections.emptyList();
-    }
-
-    static int boundedBy(int value, int min, int max) {
-        return Math.min(max, Math.max(min, value));
     }
 
     // proxy method for testing
@@ -168,7 +168,7 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
         final RecoverySettings recoverySettings
     ) {
         AsyncUploadUtils asyncUploadUtils = new AsyncUploadUtils(
-            S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.get(metadata.settings()).getBytes(),
+            S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.get(clusterService.getSettings()).getBytes(),
             normalExecutorBuilder.getStreamReader(),
             priorityExecutorBuilder.getStreamReader()
         );
@@ -182,7 +182,7 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
             priorityExecutorBuilder,
             normalExecutorBuilder,
             s3AsyncService,
-            S3Repository.PARALLEL_MULTIPART_UPLOAD_ENABLED_SETTING.get(metadata.settings())
+            S3Repository.PARALLEL_MULTIPART_UPLOAD_ENABLED_SETTING.get(clusterService.getSettings())
         );
     }
 

@@ -15,6 +15,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.concurrent.Future;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.repositories.s3.SocketAccess;
 
 import java.io.Closeable;
@@ -45,7 +46,7 @@ public class TransferNIOGroup implements Closeable {
         Future<?> shutdownFuture = eventLoopGroup.shutdownGracefully(0, 5, TimeUnit.SECONDS);
         shutdownFuture.awaitUninterruptibly();
         if (!shutdownFuture.isSuccess()) {
-            logger.warn("Error closing {} netty event loop group", THREAD_PREFIX, shutdownFuture.cause());
+            logger.warn(new ParameterizedMessage("Error closing {} netty event loop group", THREAD_PREFIX), shutdownFuture.cause());
         }
     }
 

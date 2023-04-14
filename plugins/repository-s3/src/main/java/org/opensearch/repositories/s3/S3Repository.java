@@ -152,6 +152,9 @@ class S3Repository extends MeteredBlobStoreRepository {
         MAX_PART_SIZE_USING_MULTIPART
     );
 
+    /**
+     * Minimum part size for parallel multipart uploads
+     */
     static final Setting<ByteSizeValue> PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING = Setting.byteSizeSetting(
         "parallel_multipart_upload.minimum_part_size",
         DEFAULT_MULTIPART_UPLOAD_MINIMUM_PART_SIZE,
@@ -160,11 +163,31 @@ class S3Repository extends MeteredBlobStoreRepository {
         Setting.Property.NodeScope
     );
 
+    /**
+     * This setting controls whether parallel multipart uploads will be used when calling S3 or not
+     */
     public static Setting<Boolean> PARALLEL_MULTIPART_UPLOAD_ENABLED_SETTING = Setting.boolSetting(
         "parallel_multipart_upload.enabled",
         true,
-        Setting.Property.NodeScope,
-        Setting.Property.Final
+        Setting.Property.NodeScope
+    );
+
+    /**
+     * Event loop thread count for priority uploads
+     */
+    public static Setting<Integer> PRIORITY_UPLOAD_EVENT_LOOP_THREAD_COUNT_SETTING = Setting.intSetting(
+        "parallel_multipart_upload.priority.event_loop_thread_count",
+        4,
+        Setting.Property.NodeScope
+    );
+
+    /**
+     * Event loop thread count for normal uploads
+     */
+    public static Setting<Integer> NORMAL_UPLOAD_EVENT_LOOP_THREAD_COUNT_SETTING = Setting.intSetting(
+        "parallel_multipart_upload.normal.event_loop_thread_count",
+        1,
+        Setting.Property.NodeScope
     );
 
     /**

@@ -47,6 +47,7 @@ import org.apache.logging.log4j.Logger;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.Strings;
+import org.opensearch.common.SuppressForbidden;
 import org.opensearch.common.collect.MapBuilder;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.repositories.s3.S3ClientSettings.IrsaCredentials;
@@ -59,8 +60,13 @@ import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.ContainerCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.core.client.config.ClientAsyncConfiguration;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.client.config.SdkAdvancedAsyncClientOption;
+import software.amazon.awssdk.core.retry.RetryMode;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.ProxyConfiguration;
@@ -193,7 +199,9 @@ class S3AsyncService implements Closeable {
         AsyncExecutorBuilder priorityExecutorBuilder,
         AsyncExecutorBuilder normalExecutorBuilder
     ) {
+//        setDefaultAwsProfilePath();
         final S3AsyncClientBuilder builder = S3AsyncClient.builder();
+//        builder.overrideConfiguration(buildOverrideConfiguration(clientSettings));
         final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
         builder.credentialsProvider(credentials);
 
@@ -219,7 +227,7 @@ class S3AsyncService implements Closeable {
             builder.forcePathStyle(true);
         }
 
-        builder.httpClient(buildConfiguration(clientSettings, priorityExecutorBuilder.getTransferNIOGroup()));
+        builder.httpClient(buildHttpClient(clientSettings, priorityExecutorBuilder.getTransferNIOGroup()));
         builder.asyncConfiguration(
             ClientAsyncConfiguration.builder()
                 .advancedOption(
@@ -230,7 +238,7 @@ class S3AsyncService implements Closeable {
         );
         final S3AsyncClient priorityClient = SocketAccess.doPrivileged(builder::build);
 
-        builder.httpClient(buildConfiguration(clientSettings, normalExecutorBuilder.getTransferNIOGroup()));
+        builder.httpClient(buildHttpClient(clientSettings, normalExecutorBuilder.getTransferNIOGroup()));
         builder.asyncConfiguration(
             ClientAsyncConfiguration.builder()
                 .advancedOption(
@@ -244,8 +252,20 @@ class S3AsyncService implements Closeable {
         return AmazonAsyncS3WithCredentials.create(client, priorityClient, credentials);
     }
 
+    static ClientOverrideConfiguration buildOverrideConfiguration(final S3ClientSettings clientSettings) {
+        return ClientOverrideConfiguration.builder()
+            .retryPolicy(
+                RetryPolicy.builder()
+                    .numRetries(clientSettings.maxRetries)
+                    .throttlingBackoffStrategy(clientSettings.throttleRetries ? BackoffStrategy.defaultThrottlingStrategy() : BackoffStrategy.none())
+                    .build()
+            )
+            .apiCallAttemptTimeout(Duration.ofMillis(clientSettings.requestTimeoutMillis))
+            .build();
+    }
+
     // pkg private for tests
-    static SdkAsyncHttpClient buildConfiguration(S3ClientSettings clientSettings, TransferNIOGroup transferNIOGroup) {
+    static SdkAsyncHttpClient buildHttpClient(S3ClientSettings clientSettings, TransferNIOGroup transferNIOGroup) {
         // the response metadata cache is only there for diagnostics purposes,
         // but can force objects from every response to the old generation.
         NettyNioAsyncHttpClient.Builder clientBuilder = NettyNioAsyncHttpClient.builder();
@@ -261,10 +281,10 @@ class S3AsyncService implements Closeable {
         }
 
         // TODO: add max retry and UseThrottleRetry. Replace values with settings and put these in default settings
-        clientBuilder.connectionTimeout(Duration.ofSeconds(10));
-        clientBuilder.connectionAcquisitionTimeout(Duration.ofMinutes(2));
-        clientBuilder.maxPendingConnectionAcquires(10_000);
-        clientBuilder.maxConcurrency(100);
+        clientBuilder.connectionTimeout(Duration.ofMillis(clientSettings.connectionTimeoutMillis));
+        clientBuilder.connectionAcquisitionTimeout(Duration.ofMillis(clientSettings.connectionAcquisitionTimeoutMillis));
+        clientBuilder.maxPendingConnectionAcquires(clientSettings.maxPendingConnectionAcquires);
+        clientBuilder.maxConcurrency(clientSettings.maxConnections);
         clientBuilder.eventLoopGroup(SdkEventLoopGroup.create(transferNIOGroup.getEventLoopGroup()));
         clientBuilder.tcpKeepAlive(true);
 
@@ -274,7 +294,7 @@ class S3AsyncService implements Closeable {
     // pkg private for tests
     static AwsCredentialsProvider buildCredentials(Logger logger, S3ClientSettings clientSettings) {
         final S3BasicCredentials basicCredentials = clientSettings.credentials;
-        final IrsaCredentials irsaCredentials = buildFromEnviroment(clientSettings.irsaCredentials);
+        final IrsaCredentials irsaCredentials = buildFromEnvironment(clientSettings.irsaCredentials);
 
         setDefaultAwsProfilePath();
         // If IAM Roles for Service Accounts (IRSA) credentials are configured, start with them first
@@ -340,12 +360,13 @@ class S3AsyncService implements Closeable {
             );
         } else {
             logger.debug("Using instance profile credentials");
-            return InstanceProfileCredentialsProvider.builder().build();
+            return new PrivilegedInstanceProfileCredentialsProvider();
         }
     }
 
     // Aws v2 sdk tries to load a default profile from home path which is restricted. Hence, setting these to random
     // valid paths.
+    @SuppressForbidden(reason = "Need to provide this override to v2 SDK so that path does not default to home path")
     private static void setDefaultAwsProfilePath() {
         if (ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.getStringValue().isEmpty()) {
             System.setProperty(ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(), System.getProperty("opensearch.path.conf"));
@@ -379,7 +400,7 @@ class S3AsyncService implements Closeable {
         }
     }
 
-    private static IrsaCredentials buildFromEnviroment(IrsaCredentials defaults) {
+    private static IrsaCredentials buildFromEnvironment(IrsaCredentials defaults) {
         if (defaults == null) {
             return null;
         }
@@ -421,15 +442,23 @@ class S3AsyncService implements Closeable {
         private final AwsCredentialsProvider credentials;
 
         private PrivilegedInstanceProfileCredentialsProvider() {
+            this.credentials = initializeProvider();
+        }
+
+        private AwsCredentialsProvider initializeProvider() {
+            if (SdkSystemSetting.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI.getStringValue().isPresent() ||
+                SdkSystemSetting.AWS_CONTAINER_CREDENTIALS_FULL_URI.getStringValue().isPresent()) {
+
+                return ContainerCredentialsProvider.builder().asyncCredentialUpdateEnabled(true).build();
+            }
             // InstanceProfileCredentialsProvider as last item of chain
-            this.credentials = ContainerCredentialsProvider.builder().asyncCredentialUpdateEnabled(true).build();
+            return InstanceProfileCredentialsProvider.builder().asyncCredentialUpdateEnabled(true).build();
         }
 
         @Override
         public AwsCredentials resolveCredentials() {
             return SocketAccess.doPrivileged(credentials::resolveCredentials);
         }
-
     }
 
     static class PrivilegedSTSAssumeRoleSessionCredentialsProvider<P extends AwsCredentialsProvider & Closeable>
@@ -461,7 +490,7 @@ class S3AsyncService implements Closeable {
                 }
                 return null;
             });
-        };
+        }
     }
 
     @Override
