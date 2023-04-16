@@ -136,7 +136,7 @@ public final class AsyncUploadUtils {
             return;
         }
 
-        CompletableFutureUtils.allOfExceptionForwarded(futures.toArray(new CompletableFuture[0])).thenApply(resp -> {
+        CompletableFutureUtils.allOfExceptionForwarded(futures.toArray(CompletableFuture[]::new)).thenApply(resp -> {
             uploadRequest.getUploadFinalizer().accept(true);
             return resp;
         })

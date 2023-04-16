@@ -36,7 +36,6 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.Protocol;
 import org.opensearch.common.Strings;
 import org.opensearch.common.SuppressForbidden;
-import org.opensearch.common.blobstore.stream.write.WritePriority;
 import org.opensearch.common.io.PathUtils;
 import org.opensearch.common.logging.DeprecationLogger;
 import org.opensearch.common.settings.SecureSetting;
@@ -392,11 +391,16 @@ final class S3ClientSettings {
             getRepoSettingOrDefault(CONNECTION_TTL_SETTING, normalizedSettings, TimeValue.timeValueMillis(connectionTTLMillis)).millis()
         );
         final int newConnectionAcquisitionTimeoutMillis = Math.toIntExact(
-            getRepoSettingOrDefault(CONNECTION_ACQUISITION_TIMEOUT, normalizedSettings, TimeValue.timeValueMillis(connectionAcquisitionTimeoutMillis))
-                .millis()
+            getRepoSettingOrDefault(
+                CONNECTION_ACQUISITION_TIMEOUT,
+                normalizedSettings,
+                TimeValue.timeValueMillis(connectionAcquisitionTimeoutMillis)
+            ).millis()
         );
         final int newMaxConnections = Math.toIntExact(getRepoSettingOrDefault(MAX_CONNECTIONS_SETTING, normalizedSettings, maxConnections));
-        final int newMaxPendingConnectionAcquires = Math.toIntExact(getRepoSettingOrDefault(MAX_PENDING_CONNECTION_ACQUIRES, normalizedSettings, maxPendingConnectionAcquires));
+        final int newMaxPendingConnectionAcquires = Math.toIntExact(
+            getRepoSettingOrDefault(MAX_PENDING_CONNECTION_ACQUIRES, normalizedSettings, maxPendingConnectionAcquires)
+        );
         final int newMaxRetries = getRepoSettingOrDefault(MAX_RETRIES_SETTING, normalizedSettings, maxRetries);
         final boolean newThrottleRetries = getRepoSettingOrDefault(USE_THROTTLE_RETRIES_SETTING, normalizedSettings, throttleRetries);
         final boolean newPathStyleAccess = getRepoSettingOrDefault(USE_PATH_STYLE_ACCESS, normalizedSettings, pathStyleAccess);

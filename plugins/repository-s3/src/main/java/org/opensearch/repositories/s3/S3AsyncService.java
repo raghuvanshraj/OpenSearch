@@ -64,7 +64,6 @@ import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.core.client.config.ClientAsyncConfiguration;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.client.config.SdkAdvancedAsyncClientOption;
-import software.amazon.awssdk.core.retry.RetryMode;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
@@ -199,9 +198,9 @@ class S3AsyncService implements Closeable {
         AsyncExecutorBuilder priorityExecutorBuilder,
         AsyncExecutorBuilder normalExecutorBuilder
     ) {
-//        setDefaultAwsProfilePath();
+        // setDefaultAwsProfilePath();
         final S3AsyncClientBuilder builder = S3AsyncClient.builder();
-//        builder.overrideConfiguration(buildOverrideConfiguration(clientSettings));
+        // builder.overrideConfiguration(buildOverrideConfiguration(clientSettings));
         final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
         builder.credentialsProvider(credentials);
 
@@ -257,7 +256,9 @@ class S3AsyncService implements Closeable {
             .retryPolicy(
                 RetryPolicy.builder()
                     .numRetries(clientSettings.maxRetries)
-                    .throttlingBackoffStrategy(clientSettings.throttleRetries ? BackoffStrategy.defaultThrottlingStrategy() : BackoffStrategy.none())
+                    .throttlingBackoffStrategy(
+                        clientSettings.throttleRetries ? BackoffStrategy.defaultThrottlingStrategy() : BackoffStrategy.none()
+                    )
                     .build()
             )
             .apiCallAttemptTimeout(Duration.ofMillis(clientSettings.requestTimeoutMillis))
@@ -446,8 +447,8 @@ class S3AsyncService implements Closeable {
         }
 
         private AwsCredentialsProvider initializeProvider() {
-            if (SdkSystemSetting.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI.getStringValue().isPresent() ||
-                SdkSystemSetting.AWS_CONTAINER_CREDENTIALS_FULL_URI.getStringValue().isPresent()) {
+            if (SdkSystemSetting.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI.getStringValue().isPresent()
+                || SdkSystemSetting.AWS_CONTAINER_CREDENTIALS_FULL_URI.getStringValue().isPresent()) {
 
                 return ContainerCredentialsProvider.builder().asyncCredentialUpdateEnabled(true).build();
             }

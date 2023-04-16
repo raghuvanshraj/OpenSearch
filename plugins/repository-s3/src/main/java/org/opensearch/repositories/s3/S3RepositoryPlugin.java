@@ -146,16 +146,12 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
         this.priorityExecutorBuilder = new AsyncExecutorBuilder(
             threadPool.executor(PRIORITY_FUTURE_COMPLETION),
             threadPool.executor(PRIORITY_STREAM_READER),
-            new TransferNIOGroup(
-                S3Repository.PRIORITY_UPLOAD_EVENT_LOOP_THREAD_COUNT_SETTING.get(clusterService.getSettings())
-            )
+            new TransferNIOGroup(S3Repository.PRIORITY_UPLOAD_EVENT_LOOP_THREAD_COUNT_SETTING.get(clusterService.getSettings()))
         );
         this.normalExecutorBuilder = new AsyncExecutorBuilder(
             threadPool.executor(FUTURE_COMPLETION),
             threadPool.executor(STREAM_READER),
-            new TransferNIOGroup(
-                S3Repository.NORMAL_UPLOAD_EVENT_LOOP_THREAD_COUNT_SETTING.get(clusterService.getSettings())
-            )
+            new TransferNIOGroup(S3Repository.NORMAL_UPLOAD_EVENT_LOOP_THREAD_COUNT_SETTING.get(clusterService.getSettings()))
         );
         return Collections.emptyList();
     }
