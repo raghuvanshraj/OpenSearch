@@ -198,7 +198,7 @@ class S3AsyncService implements Closeable {
         AsyncExecutorBuilder priorityExecutorBuilder,
         AsyncExecutorBuilder normalExecutorBuilder
     ) {
-         setDefaultAwsProfilePath();
+        setDefaultAwsProfilePath();
         final S3AsyncClientBuilder builder = S3AsyncClient.builder();
         builder.overrideConfiguration(buildOverrideConfiguration(clientSettings));
         final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);

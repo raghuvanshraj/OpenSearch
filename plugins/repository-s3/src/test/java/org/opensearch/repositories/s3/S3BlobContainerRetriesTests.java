@@ -123,10 +123,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
 
     @After
     public void tearDown() throws Exception {
-        IOUtils.close(
-            service,
-            asyncService
-        );
+        IOUtils.close(service, asyncService);
 
         streamReaderService.shutdown();
         futureCompletionService.shutdown();
@@ -311,48 +308,32 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
 
         final BlobContainer blobContainer = createBlobContainer(maxRetries, null, true, null);
         List<InputStream> openInputStreams = new ArrayList<>();
-        CompletableFuture<UploadResponse> completableFuture = blobContainer.writeBlobByStreams(new WriteContext(
-            "write_blob_by_streams_max_retries",
-            new StreamContextSupplier() {
+        CompletableFuture<UploadResponse> completableFuture = blobContainer.writeBlobByStreams(
+            new WriteContext("write_blob_by_streams_max_retries", new StreamContextSupplier() {
                 @Override
                 public StreamContext supplyStreamContext(long partSize) {
-                    return new StreamContext(
-                        new StreamProvider(
-                            new TransferPartStreamSupplier() {
-                                @Override
-                                public Stream supply(int partNo, long size, long position) throws IOException {
-                                    InputStream inputStream = new OffsetRangeIndexInputStream(
-                                        new ByteArrayIndexInput("desc", bytes),
-                                        size,
-                                        position
-                                    );
-                                    openInputStreams.add(inputStream);
-                                    return new Stream(
-                                        inputStream,
-                                        size,
-                                        position
-                                    );
-                                }
-                            },
-                            partSize,
-                            calculateLastPartSize(bytes.length, partSize),
-                            calculateNumberOfParts(bytes.length, partSize)
-                        ),
+                    return new StreamContext(new StreamProvider(new TransferPartStreamSupplier() {
+                        @Override
+                        public Stream supply(int partNo, long size, long position) throws IOException {
+                            InputStream inputStream = new OffsetRangeIndexInputStream(
+                                new ByteArrayIndexInput("desc", bytes),
+                                size,
+                                position
+                            );
+                            openInputStreams.add(inputStream);
+                            return new Stream(inputStream, size, position);
+                        }
+                    }, partSize, calculateLastPartSize(bytes.length, partSize), calculateNumberOfParts(bytes.length, partSize)),
                         calculateNumberOfParts(bytes.length, partSize)
                     );
                 }
-            },
-            bytes.length,
-            false,
-            WritePriority.NORMAL,
-            0,
-            new UploadFinalizer() {
+            }, bytes.length, false, WritePriority.NORMAL, 0, new UploadFinalizer() {
                 @Override
                 public void accept(boolean uploadSuccess) {
                     assertTrue(uploadSuccess);
                 }
-            }
-        ));
+            })
+        );
 
         // wait for completableFuture to finish
         completableFuture.get();

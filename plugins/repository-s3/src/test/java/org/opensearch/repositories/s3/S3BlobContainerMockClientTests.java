@@ -82,14 +82,23 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             super(configPath);
         }
 
-        public void initializeMocks(boolean failCreateMultipartUploadRequest, boolean failUploadPartRequest, boolean failCompleteMultipartUploadRequest) {
+        public void initializeMocks(
+            boolean failCreateMultipartUploadRequest,
+            boolean failUploadPartRequest,
+            boolean failCompleteMultipartUploadRequest
+        ) {
             setupFailureBooleans(failCreateMultipartUploadRequest, failUploadPartRequest, failCompleteMultipartUploadRequest);
             doAnswer(this::doOnCreateMultipartUpload).when(asyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
             doAnswer(this::doOnPartUpload).when(asyncClient).uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class));
-            doAnswer(this::doOnCompleteMultipartUpload).when(asyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+            doAnswer(this::doOnCompleteMultipartUpload).when(asyncClient)
+                .completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
         }
 
-        private void setupFailureBooleans(boolean failCreateMultipartUploadRequest, boolean failUploadPartRequest, boolean failCompleteMultipartUploadRequest) {
+        private void setupFailureBooleans(
+            boolean failCreateMultipartUploadRequest,
+            boolean failUploadPartRequest,
+            boolean failCompleteMultipartUploadRequest
+        ) {
             this.failCreateMultipartUploadRequest = failCreateMultipartUploadRequest;
             this.failUploadPartRequest = failUploadPartRequest;
             this.failCompleteMultipartUploadRequest = failCompleteMultipartUploadRequest;
@@ -101,11 +110,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             if (failCreateMultipartUploadRequest) {
                 completableFuture.completeExceptionally(new IOException());
             } else {
-                completableFuture.complete(
-                    CreateMultipartUploadResponse.builder()
-                        .uploadId(multipartUploadId)
-                        .build()
-                );
+                completableFuture.complete(CreateMultipartUploadResponse.builder().uploadId(multipartUploadId).build());
             }
 
             return completableFuture;
@@ -118,11 +123,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             if (failUploadPartRequest) {
                 completableFuture.completeExceptionally(new IOException());
             } else {
-                completableFuture.complete(
-                    UploadPartResponse.builder()
-                        .eTag("eTag")
-                        .build()
-                );
+                completableFuture.complete(UploadPartResponse.builder().eTag("eTag").build());
             }
 
             return completableFuture;
@@ -135,10 +136,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             if (failCompleteMultipartUploadRequest) {
                 completableFuture.completeExceptionally(new IOException());
             } else {
-                completableFuture.complete(
-                    CompleteMultipartUploadResponse.builder()
-                        .build()
-                );
+                completableFuture.complete(CompleteMultipartUploadResponse.builder().build());
             }
 
             return completableFuture;
@@ -146,19 +144,25 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
 
         public void verifyCallCount(int numberOfParts) {
             verify(asyncClient, times(1)).createMultipartUpload(any(CreateMultipartUploadRequest.class));
-            verify(asyncClient, times(!failCreateMultipartUploadRequest
-                ? numberOfParts
-                : 0)).uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class));
-            verify(asyncClient, times(!failCreateMultipartUploadRequest && !failUploadPartRequest
-                ? 1
-                : 0)).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
-            verify(asyncClient, times(!failCreateMultipartUploadRequest && (failUploadPartRequest || failCompleteMultipartUploadRequest)
-                ? 1
-                : 0)).abortMultipartUpload(any(AbortMultipartUploadRequest.class));
+            verify(asyncClient, times(!failCreateMultipartUploadRequest ? numberOfParts : 0)).uploadPart(
+                any(UploadPartRequest.class),
+                any(AsyncRequestBody.class)
+            );
+            verify(asyncClient, times(!failCreateMultipartUploadRequest && !failUploadPartRequest ? 1 : 0)).completeMultipartUpload(
+                any(CompleteMultipartUploadRequest.class)
+            );
+            verify(
+                asyncClient,
+                times(!failCreateMultipartUploadRequest && (failUploadPartRequest || failCompleteMultipartUploadRequest) ? 1 : 0)
+            ).abortMultipartUpload(any(AbortMultipartUploadRequest.class));
         }
 
         @Override
-        public AmazonAsyncS3Reference client(RepositoryMetadata repositoryMetadata, AsyncExecutorBuilder priorityExecutorBuilder, AsyncExecutorBuilder normalExecutorBuilder) {
+        public AmazonAsyncS3Reference client(
+            RepositoryMetadata repositoryMetadata,
+            AsyncExecutorBuilder priorityExecutorBuilder,
+            AsyncExecutorBuilder normalExecutorBuilder
+        ) {
             return new AmazonAsyncS3Reference(AmazonAsyncS3WithCredentials.create(asyncClient, asyncClient, null));
         }
     }
@@ -251,10 +255,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
     }
 
     private S3BlobContainer createBlobContainer() {
-        return new S3BlobContainer(
-            BlobPath.cleanPath(),
-            createBlobStore()
-        );
+        return new S3BlobContainer(BlobPath.cleanPath(), createBlobStore());
     }
 
     private S3BlobStore createBlobStore() {
@@ -294,77 +295,54 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
 
     public void testWriteBlobByStreamsNoFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(false, false, false);
-        int numberOfParts = randomIntBetween(2, 5);
-        testWriteBlobByStreamsLargeBlob(numberOfParts, false);
+        testWriteBlobByStreamsLargeBlob(false);
     }
 
     public void testWriteBlobByStreamsCreateMultipartRequestFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(true, false, false);
-        int numberOfParts = randomIntBetween(2, 5);
-        testWriteBlobByStreamsLargeBlob(numberOfParts, true);
+        testWriteBlobByStreamsLargeBlob(true);
     }
 
     public void testWriteBlobByStreamsUploadPartRequestFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(false, true, false);
-        int numberOfParts = randomIntBetween(2, 5);
-        testWriteBlobByStreamsLargeBlob(numberOfParts, true);
+        testWriteBlobByStreamsLargeBlob(true);
     }
 
     public void testWriteBlobByStreamsCompleteMultipartRequestFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(false, false, true);
-        int numberOfParts = randomIntBetween(2, 5);
-        testWriteBlobByStreamsLargeBlob(numberOfParts, true);
+        testWriteBlobByStreamsLargeBlob(true);
     }
 
-    private void testWriteBlobByStreamsLargeBlob(int numberOfParts, boolean expectException) throws ExecutionException, InterruptedException, IOException {
+    private void testWriteBlobByStreamsLargeBlob(boolean expectException) throws IOException {
         final ByteSizeValue partSize = S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.getDefault(Settings.EMPTY);
 
+        int numberOfParts = randomIntBetween(2, 5);
         final long lastPartSize = randomLongBetween(10, 512);
         final long blobSize = ((numberOfParts - 1) * partSize.getBytes()) + lastPartSize;
 
         List<InputStream> openInputStreams = new ArrayList<>();
-        CompletableFuture<UploadResponse> completableFuture = blobContainer.writeBlobByStreams(new WriteContext(
-            "write_large_blob",
-            new StreamContextSupplier() {
+        CompletableFuture<UploadResponse> completableFuture = blobContainer.writeBlobByStreams(
+            new WriteContext("write_large_blob", new StreamContextSupplier() {
                 @Override
                 public StreamContext supplyStreamContext(long partSize) {
-                    return new StreamContext(
-                        new StreamProvider(
-                            new TransferPartStreamSupplier() {
-                                @Override
-                                public Stream supply(int partNo, long size, long position) throws IOException {
-                                    InputStream inputStream = new OffsetRangeIndexInputStream(
-                                        new ZeroIndexInput("desc", blobSize),
-                                        size,
-                                        position
-                                    );
-                                    openInputStreams.add(inputStream);
-                                    return new Stream(
-                                        inputStream,
-                                        size,
-                                        position
-                                    );
-                                }
-                            },
-                            partSize,
-                            calculateLastPartSize(blobSize, partSize),
-                            calculateNumberOfParts(blobSize, partSize)
-                        ),
+                    return new StreamContext(new StreamProvider(new TransferPartStreamSupplier() {
+                        @Override
+                        public Stream supply(int partNo, long size, long position) throws IOException {
+                            InputStream inputStream = new OffsetRangeIndexInputStream(new ZeroIndexInput("desc", blobSize), size, position);
+                            openInputStreams.add(inputStream);
+                            return new Stream(inputStream, size, position);
+                        }
+                    }, partSize, calculateLastPartSize(blobSize, partSize), calculateNumberOfParts(blobSize, partSize)),
                         calculateNumberOfParts(blobSize, partSize)
                     );
                 }
-            },
-            blobSize,
-            false,
-            WritePriority.HIGH,
-            0,
-            new UploadFinalizer() {
+            }, blobSize, false, WritePriority.HIGH, 0, new UploadFinalizer() {
                 @Override
                 public void accept(boolean uploadSuccess) {
                     assertTrue(uploadSuccess);
                 }
-            }
-        ));
+            })
+        );
 
         // wait for completableFuture to finish
         if (expectException) {
