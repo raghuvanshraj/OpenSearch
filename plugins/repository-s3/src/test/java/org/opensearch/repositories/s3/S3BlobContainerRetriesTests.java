@@ -103,11 +103,6 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
 
     private S3Service service;
     private S3AsyncService asyncService;
-
-    private ExecutorService priorityFutureCompletionService;
-    private ExecutorService priorityStreamReaderService;
-    private TransferNIOGroup priorityTransferNIOGroup;
-
     private ExecutorService futureCompletionService;
     private ExecutorService streamReaderService;
     private TransferNIOGroup transferNIOGroup;
@@ -116,10 +111,6 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
     public void setUp() throws Exception {
         service = new S3Service(configPath());
         asyncService = new S3AsyncService(configPath());
-
-        priorityFutureCompletionService = Executors.newSingleThreadExecutor();
-        priorityStreamReaderService = Executors.newSingleThreadExecutor();
-        priorityTransferNIOGroup = new TransferNIOGroup(4);
 
         futureCompletionService = Executors.newSingleThreadExecutor();
         streamReaderService = Executors.newSingleThreadExecutor();
@@ -136,10 +127,6 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
             service,
             asyncService
         );
-
-        priorityStreamReaderService.shutdown();
-        priorityFutureCompletionService.shutdown();
-        IOUtils.close(priorityTransferNIOGroup);
 
         streamReaderService.shutdown();
         futureCompletionService.shutdown();
@@ -200,12 +187,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
             Settings.builder().put(S3Repository.CLIENT_NAME.getKey(), clientName).build()
         );
 
-        AsyncExecutorBuilder priorityExecutorBuilder = new AsyncExecutorBuilder(
-            priorityFutureCompletionService,
-            priorityStreamReaderService,
-            priorityTransferNIOGroup
-        );
-        AsyncExecutorBuilder normalExecutorBuilder = new AsyncExecutorBuilder(
+        AsyncExecutorBuilder asyncExecutorBuilder = new AsyncExecutorBuilder(
             futureCompletionService,
             streamReaderService,
             transferNIOGroup
@@ -225,11 +207,11 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
                 repositoryMetadata,
                 new AsyncUploadUtils(
                     S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.getDefault(Settings.EMPTY).getBytes(),
-                    normalExecutorBuilder.getStreamReader(),
-                    priorityExecutorBuilder.getStreamReader()
+                    asyncExecutorBuilder.getStreamReader(),
+                    asyncExecutorBuilder.getStreamReader()
                 ),
-                priorityExecutorBuilder,
-                normalExecutorBuilder
+                asyncExecutorBuilder,
+                asyncExecutorBuilder
             )
         ) {
             @Override
