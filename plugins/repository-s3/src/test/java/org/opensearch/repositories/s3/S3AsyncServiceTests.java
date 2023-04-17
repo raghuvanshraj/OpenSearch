@@ -9,6 +9,7 @@
 package org.opensearch.repositories.s3;
 
 import org.junit.Before;
+import org.opensearch.cli.SuppressForbidden;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.common.settings.MockSecureSettings;
 import org.opensearch.common.settings.Settings;
@@ -23,6 +24,7 @@ public class S3AsyncServiceTests extends OpenSearchTestCase implements ConfigPat
 
     @Override
     @Before
+    @SuppressForbidden(reason = "Need to set opensearch.path.conf for async client")
     public void setUp() throws Exception {
         SocketAccess.doPrivileged(() -> System.setProperty("opensearch.path.conf", configPath().toString()));
         super.setUp();
