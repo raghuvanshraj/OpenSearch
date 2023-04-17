@@ -31,7 +31,7 @@ public class TransferNIOGroup implements Closeable {
     private final EventLoopGroup eventLoopGroup;
 
     /**
-     * Construct a new TransgerNIOGroup
+     * Construct a new TransferNIOGroup
      *
      * @param eventLoopThreads The number of event loop threads for this event loop group
      */

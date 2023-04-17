@@ -284,21 +284,11 @@ final class S3ClientSettings {
     /** The max number of connections for the s3 client */
     final int maxConnections;
 
+    /** The connnection acquisition timeout for the s3 async client */
     final int connectionAcquisitionTimeoutMillis;
 
+    /** The max number of requests pending to acquire connection for the s3 async client */
     final int maxPendingConnectionAcquires;
-
-    // /** The connection timeout for the s3 async client */
-    // final int connectionV2TimeoutMillis;
-    //
-    // /** The max number of requests pending to acquire connection for the s3 async client */
-    // final int maxPendingAcquireConnections;
-    //
-    // /** The max number of connections for the s3 async client */
-    // final int maxV2Connections;
-    //
-    // /** The connnection acquisition timeout for the s3 async client */
-    // final int connectionAcquisitionTimeout;
 
     /** The number of retries to use for the s3 client. */
     final int maxRetries;
@@ -346,10 +336,10 @@ final class S3ClientSettings {
         this.requestTimeoutMillis = requestTimeoutMillis;
         this.connectionTimeoutMillis = connectionTimeoutMillis;
         this.connectionTTLMillis = connectionTTLMillis;
-        this.maxRetries = maxRetries;
         this.maxConnections = maxConnections;
         this.connectionAcquisitionTimeoutMillis = connectionAcquisitionTimeoutMillis;
         this.maxPendingConnectionAcquires = maxPendingConnectionAcquires;
+        this.maxRetries = maxRetries;
         this.throttleRetries = throttleRetries;
         this.pathStyleAccess = pathStyleAccess;
         this.disableChunkedEncoding = disableChunkedEncoding;

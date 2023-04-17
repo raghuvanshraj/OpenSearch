@@ -12,7 +12,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A {@link ThreadFactory} extension for OpenSearch use
+ * OpenSearchThreadFactory is an extension of {@link ThreadFactory}
+ * that overrides new thread creation and sets them as daemon threads
  */
 public class OpenSearchThreadFactory implements ThreadFactory {
 
