@@ -30,13 +30,7 @@ public class UploadRequest {
      * @param writePriority The priority of this upload
      * @param uploadFinalizer An upload finalizer to call once all parts are uploaded
      */
-    public UploadRequest(
-        String bucket,
-        String key,
-        long contentLength,
-        WritePriority writePriority,
-        UploadFinalizer uploadFinalizer
-    ) {
+    public UploadRequest(String bucket, String key, long contentLength, WritePriority writePriority, UploadFinalizer uploadFinalizer) {
         this.bucket = bucket;
         this.key = key;
         this.contentLength = contentLength;
