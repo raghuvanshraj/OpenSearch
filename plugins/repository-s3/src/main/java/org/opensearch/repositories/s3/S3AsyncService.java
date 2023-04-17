@@ -198,7 +198,7 @@ class S3AsyncService implements Closeable {
         AsyncExecutorBuilder priorityExecutorBuilder,
         AsyncExecutorBuilder normalExecutorBuilder
     ) {
-        // setDefaultAwsProfilePath();
+         setDefaultAwsProfilePath();
         final S3AsyncClientBuilder builder = S3AsyncClient.builder();
         builder.overrideConfiguration(buildOverrideConfiguration(clientSettings));
         final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
@@ -297,7 +297,6 @@ class S3AsyncService implements Closeable {
         final S3BasicCredentials basicCredentials = clientSettings.credentials;
         final IrsaCredentials irsaCredentials = buildFromEnvironment(clientSettings.irsaCredentials);
 
-        setDefaultAwsProfilePath();
         // If IAM Roles for Service Accounts (IRSA) credentials are configured, start with them first
         if (irsaCredentials != null) {
             logger.debug("Using IRSA credentials");
