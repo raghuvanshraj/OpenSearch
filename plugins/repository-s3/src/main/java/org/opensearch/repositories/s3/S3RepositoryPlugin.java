@@ -124,7 +124,7 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
         this.configPath = configPath;
         // eagerly load client settings so that secure settings are read
         Map<String, S3ClientSettings> clientsSettings = S3ClientSettings.load(settings, configPath);
-        this.s3AsyncService = Objects.requireNonNull(s3AsyncService, "S3 aasync service must not be null");
+        this.s3AsyncService = Objects.requireNonNull(s3AsyncService, "S3AsyncService must not be null");
         this.service.refreshAndClearCache(clientsSettings);
         this.s3AsyncService.refreshAndClearCache(clientsSettings);
     }
