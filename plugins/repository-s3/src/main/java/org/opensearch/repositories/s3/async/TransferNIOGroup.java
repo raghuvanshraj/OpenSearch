@@ -21,12 +21,20 @@ import org.opensearch.repositories.s3.SocketAccess;
 import java.io.Closeable;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * TransferNIOGroup is an encapsulation for netty {@link EventLoopGroup}
+ */
 public class TransferNIOGroup implements Closeable {
     private static final String THREAD_PREFIX = "aws-async-transfer-nio";
     private final Logger logger = LogManager.getLogger(TransferNIOGroup.class);
 
     private final EventLoopGroup eventLoopGroup;
 
+    /**
+     * Construct a new TransgerNIOGroup
+     *
+     * @param eventLoopThreads The number of event loop threads for this event loop group
+     */
     public TransferNIOGroup(int eventLoopThreads) {
         // Epoll event loop incurs less GC and provides better performance than Nio loop. Therefore,
         // using epoll wherever available is preferred.

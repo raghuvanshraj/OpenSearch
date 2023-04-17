@@ -57,12 +57,27 @@ public final class AsyncUploadUtils {
      */
     private static final long MAX_UPLOAD_PARTS = 10_000;
 
+    /**
+     * Construct a new object of AsyncUploadUtils
+     *
+     * @param minimumPartSize The minimum part size for parallel multipart uploads
+     * @param executorService The stream reader {@link ExecutorService} for normal priority uploads
+     * @param priorityExecutorService the stream read {@link ExecutorService} for high priority uploads
+     */
     public AsyncUploadUtils(long minimumPartSize, ExecutorService executorService, ExecutorService priorityExecutorService) {
         this.executorService = executorService;
         this.priorityExecutorService = priorityExecutorService;
         this.minimumPartSize = minimumPartSize;
     }
 
+    /**
+     * Upload an object to S3 using the async client
+     *
+     * @param s3AsyncClient The {@link S3AsyncClient} to use for uploads
+     * @param uploadRequest The {@link UploadRequest} object encapsulating all relevant details for upload
+     * @param streamContext The {@link StreamContext} to supply streams during upload
+     * @return A {@link CompletableFuture} to listen for upload completion
+     */
     public CompletableFuture<UploadResponse> uploadObject(
         S3AsyncClient s3AsyncClient,
         UploadRequest uploadRequest,

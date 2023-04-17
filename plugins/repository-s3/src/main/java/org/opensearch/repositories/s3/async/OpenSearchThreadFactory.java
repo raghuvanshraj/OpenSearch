@@ -11,6 +11,9 @@ package org.opensearch.repositories.s3.async;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * A {@link ThreadFactory} extension for OpenSearch use
+ */
 public class OpenSearchThreadFactory implements ThreadFactory {
 
     final ThreadGroup group;

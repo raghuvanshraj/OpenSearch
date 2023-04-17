@@ -169,7 +169,6 @@ class S3BlobContainer extends AbstractBlobContainer {
             blobStore.bucket(),
             buildKey(writeContext.getFileName()),
             writeContext.getFileSize(),
-            writeContext.getChecksum(),
             writeContext.getWritePriority(),
             writeContext.getUploadFinalizer()
         );

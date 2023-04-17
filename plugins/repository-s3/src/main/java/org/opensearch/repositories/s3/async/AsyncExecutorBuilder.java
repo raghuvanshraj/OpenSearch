@@ -10,12 +10,22 @@ package org.opensearch.repositories.s3.async;
 
 import java.util.concurrent.ExecutorService;
 
+/**
+ * An encapsulation for the {@link TransferNIOGroup}, and the stream reader and future completion executor services
+ */
 public class AsyncExecutorBuilder {
 
     private final ExecutorService futureCompletionExecutor;
     private final ExecutorService streamReader;
     private final TransferNIOGroup transferNIOGroup;
 
+    /**
+     * Construct a new AsyncExecutorBuilder object
+     *
+     * @param futureCompletionExecutor An {@link ExecutorService} to pass to {@link software.amazon.awssdk.services.s3.S3AsyncClient} for future completion
+     * @param streamReader An {@link ExecutorService} to read streams for upload
+     * @param transferNIOGroup A {@link TransferNIOGroup} which encapsulates the netty {@link io.netty.channel.EventLoopGroup} for async uploads
+     */
     public AsyncExecutorBuilder(ExecutorService futureCompletionExecutor, ExecutorService streamReader, TransferNIOGroup transferNIOGroup) {
         this.transferNIOGroup = transferNIOGroup;
         this.streamReader = streamReader;

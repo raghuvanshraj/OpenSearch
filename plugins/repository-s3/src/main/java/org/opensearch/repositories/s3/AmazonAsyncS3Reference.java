@@ -32,7 +32,6 @@
 
 package org.opensearch.repositories.s3;
 
-import com.amazonaws.services.s3.AmazonS3Client;
 import org.opensearch.common.concurrent.RefCountedReleasable;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 
@@ -40,7 +39,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 /**
- * Handles the shutdown of the wrapped {@link AmazonS3Client} using reference
+ * Handles the shutdown of the wrapped {@link software.amazon.awssdk.services.s3.S3AsyncClient} using reference
  * counting.
  */
 public class AmazonAsyncS3Reference extends RefCountedReleasable<AmazonAsyncS3WithCredentials> {
