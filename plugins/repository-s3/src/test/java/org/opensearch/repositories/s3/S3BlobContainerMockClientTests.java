@@ -107,11 +107,18 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
         private CompletableFuture<CreateMultipartUploadResponse> doOnCreateMultipartUpload(InvocationOnMock invocationOnMock) {
             multipartUploadId = randomAlphaOfLength(5);
             CompletableFuture<CreateMultipartUploadResponse> completableFuture = new CompletableFuture<>();
-            if (failCreateMultipartUploadRequest) {
-                completableFuture.completeExceptionally(new IOException());
-            } else {
-                completableFuture.complete(CreateMultipartUploadResponse.builder().uploadId(multipartUploadId).build());
-            }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(randomIntBetween(1000, 5000));
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                if (failCreateMultipartUploadRequest) {
+                    completableFuture.completeExceptionally(new IOException());
+                } else {
+                    completableFuture.complete(CreateMultipartUploadResponse.builder().uploadId(multipartUploadId).build());
+                }
+            }).start();
 
             return completableFuture;
         }
@@ -120,11 +127,18 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             UploadPartRequest uploadPartRequest = invocationOnMock.getArgument(0);
             assertEquals(multipartUploadId, uploadPartRequest.uploadId());
             CompletableFuture<UploadPartResponse> completableFuture = new CompletableFuture<>();
-            if (failUploadPartRequest) {
-                completableFuture.completeExceptionally(new IOException());
-            } else {
-                completableFuture.complete(UploadPartResponse.builder().eTag("eTag").build());
-            }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(randomIntBetween(1000, 5000));
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                if (failUploadPartRequest) {
+                    completableFuture.completeExceptionally(new IOException());
+                } else {
+                    completableFuture.complete(UploadPartResponse.builder().eTag("eTag").build());
+                }
+            }).start();
 
             return completableFuture;
         }
@@ -133,11 +147,18 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             CompleteMultipartUploadRequest completeMultipartUploadRequest = invocationOnMock.getArgument(0);
             assertEquals(multipartUploadId, completeMultipartUploadRequest.uploadId());
             CompletableFuture<CompleteMultipartUploadResponse> completableFuture = new CompletableFuture<>();
-            if (failCompleteMultipartUploadRequest) {
-                completableFuture.completeExceptionally(new IOException());
-            } else {
-                completableFuture.complete(CompleteMultipartUploadResponse.builder().build());
-            }
+            new Thread(() -> {
+                try {
+                    Thread.sleep(randomIntBetween(1000, 5000));
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                if (failCompleteMultipartUploadRequest) {
+                    completableFuture.completeExceptionally(new IOException());
+                } else {
+                    completableFuture.complete(CompleteMultipartUploadResponse.builder().build());
+                }
+            }).start();
 
             return completableFuture;
         }
@@ -313,7 +334,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
         testWriteBlobByStreamsLargeBlob(true);
     }
 
-    private void testWriteBlobByStreamsLargeBlob(boolean expectException) throws IOException {
+    private void testWriteBlobByStreamsLargeBlob(boolean expectException) throws IOException, ExecutionException, InterruptedException {
         final ByteSizeValue partSize = S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.getDefault(Settings.EMPTY);
 
         int numberOfParts = randomIntBetween(2, 5);
@@ -347,6 +368,8 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
         // wait for completableFuture to finish
         if (expectException) {
             assertThrows(ExecutionException.class, completableFuture::get);
+        } else {
+            completableFuture.get();
         }
 
         asyncService.verifyCallCount(numberOfParts);
