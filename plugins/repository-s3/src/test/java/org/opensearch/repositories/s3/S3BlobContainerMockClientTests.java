@@ -60,7 +60,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -98,7 +97,12 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             boolean failUploadPartRequest,
             boolean failCompleteMultipartUploadRequest
         ) {
-            setupFailureBooleans(failPutObjectRequest, failCreateMultipartUploadRequest, failUploadPartRequest, failCompleteMultipartUploadRequest);
+            setupFailureBooleans(
+                failPutObjectRequest,
+                failCreateMultipartUploadRequest,
+                failUploadPartRequest,
+                failCompleteMultipartUploadRequest
+            );
             doAnswer(this::doOnPutObject).when(asyncClient).putObject(any(PutObjectRequest.class), any(AsyncRequestBody.class));
             doAnswer(this::doOnDeleteObject).when(asyncClient).deleteObject(any(DeleteObjectRequest.class));
             doAnswer(this::doOnCreateMultipartUpload).when(asyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
@@ -214,23 +218,26 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             return completableFuture;
         }
 
-        public void verifyMultipartUploadCallCount(int numberOfParts) {
+        public void verifyMultipartUploadCallCount(int numberOfParts, boolean finalizeUploadFailure) {
             verify(asyncClient, times(1)).createMultipartUpload(any(CreateMultipartUploadRequest.class));
             verify(asyncClient, times(!failCreateMultipartUploadRequest ? numberOfParts : 0)).uploadPart(
                 any(UploadPartRequest.class),
                 any(AsyncRequestBody.class)
             );
-            verify(asyncClient, times(!failCreateMultipartUploadRequest && !failUploadPartRequest ? 1 : 0)).completeMultipartUpload(
-                any(CompleteMultipartUploadRequest.class)
-            );
+            verify(asyncClient, times(!failCreateMultipartUploadRequest && !failUploadPartRequest && !finalizeUploadFailure ? 1 : 0))
+                .completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
             verify(
                 asyncClient,
-                times((!failCreateMultipartUploadRequest && (failUploadPartRequest || failCompleteMultipartUploadRequest)) ? 1 : 0)
+                times(
+                    (!failCreateMultipartUploadRequest && (failUploadPartRequest || failCompleteMultipartUploadRequest))
+                        || finalizeUploadFailure ? 1 : 0
+                )
             ).abortMultipartUpload(any(AbortMultipartUploadRequest.class));
         }
 
-        public void verifySingleChunkUploadCallCount() {
+        public void verifySingleChunkUploadCallCount(boolean finalizeUploadFailure) {
             verify(asyncClient, times(1)).putObject(any(PutObjectRequest.class), any(AsyncRequestBody.class));
+            verify(asyncClient, times(finalizeUploadFailure ? 1 : 0)).deleteObject(any(DeleteObjectRequest.class));
         }
 
         @Override
@@ -371,40 +378,47 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
 
     public void testWriteBlobByStreamsNoFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(false, false, false, false);
-        testWriteBlobByStreamsLargeBlob(false);
+        testWriteBlobByStreamsLargeBlob(false, false);
     }
 
     public void testWriteBlobByStreamsFinalizeUploadFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(false, false, false, false);
-        testWriteBlobByStreamsLargeBlob(false);
+        testWriteBlobByStreamsLargeBlob(false, true);
     }
 
     public void testWriteBlobByStreamsCreateMultipartRequestFailure() throws IOException, ExecutionException, InterruptedException {
-        asyncService.initializeMocks(false,true, false, false);
-        testWriteBlobByStreamsLargeBlob(true);
+        asyncService.initializeMocks(false, true, false, false);
+        testWriteBlobByStreamsLargeBlob(true, false);
     }
 
     public void testWriteBlobByStreamsUploadPartRequestFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(false, false, true, false);
-        testWriteBlobByStreamsLargeBlob(true);
+        testWriteBlobByStreamsLargeBlob(true, false);
     }
 
     public void testWriteBlobByStreamsCompleteMultipartRequestFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(false, false, false, true);
-        testWriteBlobByStreamsLargeBlob(true);
+        testWriteBlobByStreamsLargeBlob(true, false);
     }
 
     public void testWriteBlobByStreamsSingleChunkUploadNoFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(false, false, false, false);
-        testWriteBlobByStreams(false);
+        testWriteBlobByStreams(false, false);
     }
 
     public void testWriteBlobByStreamsSingleChunkUploadPutObjectFailure() throws IOException, ExecutionException, InterruptedException {
         asyncService.initializeMocks(true, false, false, false);
-        testWriteBlobByStreams(true);
+        testWriteBlobByStreams(true, false);
     }
 
-    private void testWriteBlobByStreams(boolean expectException) throws IOException, ExecutionException, InterruptedException {
+    public void testWriteBlobByStreamsSingleChunkUploadFinalizeUploadFailure() throws IOException, ExecutionException,
+        InterruptedException {
+        asyncService.initializeMocks(false, false, false, false);
+        testWriteBlobByStreams(false, true);
+    }
+
+    private void testWriteBlobByStreams(boolean expectException, boolean throwExceptionOnFinalizeUpload) throws IOException,
+        ExecutionException, InterruptedException {
         final byte[] bytes = randomByteArrayOfLength(100);
         List<InputStream> openInputStreams = new ArrayList<>();
         CompletableFuture<UploadResponse> completableFuture = blobContainer.writeBlobByStreams(
@@ -430,18 +444,21 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
                 @Override
                 public void accept(boolean uploadSuccess) {
                     assertTrue(uploadSuccess);
+                    if (throwExceptionOnFinalizeUpload) {
+                        throw new RuntimeException();
+                    }
                 }
             })
         );
 
         // wait for completableFuture to finish
-        if (expectException) {
+        if (expectException || throwExceptionOnFinalizeUpload) {
             assertThrows(ExecutionException.class, completableFuture::get);
         } else {
             completableFuture.get();
         }
 
-        asyncService.verifySingleChunkUploadCallCount();
+        asyncService.verifySingleChunkUploadCallCount(throwExceptionOnFinalizeUpload);
 
         openInputStreams.forEach(inputStream -> {
             try {
@@ -452,7 +469,8 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
         });
     }
 
-    private void testWriteBlobByStreamsLargeBlob(boolean expectException) throws IOException, ExecutionException, InterruptedException {
+    private void testWriteBlobByStreamsLargeBlob(boolean expectException, boolean throwExceptionOnFinalizeUpload) throws IOException,
+        ExecutionException, InterruptedException {
         final ByteSizeValue partSize = S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.getDefault(Settings.EMPTY);
 
         int numberOfParts = randomIntBetween(2, 5);
@@ -479,18 +497,21 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
                 @Override
                 public void accept(boolean uploadSuccess) {
                     assertTrue(uploadSuccess);
+                    if (throwExceptionOnFinalizeUpload) {
+                        throw new RuntimeException();
+                    }
                 }
             })
         );
 
         // wait for completableFuture to finish
-        if (expectException) {
+        if (expectException || throwExceptionOnFinalizeUpload) {
             assertThrows(ExecutionException.class, completableFuture::get);
         } else {
             completableFuture.get();
         }
 
-        asyncService.verifyMultipartUploadCallCount(numberOfParts);
+        asyncService.verifyMultipartUploadCallCount(numberOfParts, throwExceptionOnFinalizeUpload);
 
         openInputStreams.forEach(inputStream -> {
             try {

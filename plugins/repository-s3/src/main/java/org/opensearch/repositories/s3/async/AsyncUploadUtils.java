@@ -27,6 +27,7 @@ import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartResponse;
@@ -60,8 +61,8 @@ public final class AsyncUploadUtils {
     /**
      * Construct a new object of AsyncUploadUtils
      *
-     * @param minimumPartSize The minimum part size for parallel multipart uploads
-     * @param executorService The stream reader {@link ExecutorService} for normal priority uploads
+     * @param minimumPartSize         The minimum part size for parallel multipart uploads
+     * @param executorService         The stream reader {@link ExecutorService} for normal priority uploads
      * @param priorityExecutorService the stream read {@link ExecutorService} for high priority uploads
      */
     public AsyncUploadUtils(long minimumPartSize, ExecutorService executorService, ExecutorService priorityExecutorService) {
@@ -337,10 +338,29 @@ public final class AsyncUploadUtils {
                 }
 
                 return null;
+            }).handle((resp, throwable) -> {
+                if (throwable != null) {
+                    deleteUploadedObject(s3AsyncClient, uploadRequest);
+                    returnFuture.completeExceptionally(throwable);
+                }
+
+                return null;
             })
         );
 
         CompletableFutureUtils.forwardExceptionTo(returnFuture, putObjectFuture);
         CompletableFutureUtils.forwardResultTo(putObjectFuture, returnFuture);
+    }
+
+    private void deleteUploadedObject(S3AsyncClient s3AsyncClient, UploadRequest uploadRequest) {
+        DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+            .bucket(uploadRequest.getBucket())
+            .key(uploadRequest.getKey())
+            .build();
+
+        SocketAccess.doPrivileged(() -> s3AsyncClient.deleteObject(deleteObjectRequest)).exceptionally(throwable -> {
+            log.warn("Failed to delete uploaded object", throwable);
+            return null;
+        });
     }
 }
