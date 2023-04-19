@@ -19,11 +19,16 @@ import org.opensearch.common.blobstore.stream.write.UploadResponse;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
 import org.opensearch.common.blobstore.transfer.RemoteTransferContainer;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeFileInputStream;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeInputStream;
+import org.opensearch.index.translog.ChannelFactory;
 import org.opensearch.index.translog.transfer.FileSnapshot.TransferFileSnapshot;
 import org.opensearch.threadpool.ThreadPool;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -118,12 +123,23 @@ public class BlobStoreTransferService implements TransferService {
 
         CompletableFuture<UploadResponse> resultFuture = null;
         try {
+            ChannelFactory channelFactory = FileChannel::open;
+            long contentLength;
+            try (FileChannel channel = channelFactory.open(fileSnapshot.getPath(), StandardOpenOption.READ)) {
+                contentLength = channel.size();
+            }
             RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
-                fileSnapshot.getPath(),
                 fileSnapshot.getName(),
                 fileSnapshot.getName(),
+                contentLength,
                 true,
-                writePriority
+                writePriority,
+                new RemoteTransferContainer.OffsetRangeInputStreamSupplier() {
+                    @Override
+                    public OffsetRangeInputStream get(long size, long position) throws IOException {
+                        return new OffsetRangeFileInputStream(fileSnapshot.getPath(), size, position);
+                    }
+                }
             );
             WriteContext writeContext = remoteTransferContainer.createWriteContext();
             CompletableFuture<UploadResponse> uploadFuture = blobStore.blobContainer(blobPath).writeBlobByStreams(writeContext);

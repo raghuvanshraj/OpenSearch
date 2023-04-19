@@ -22,6 +22,8 @@ import org.opensearch.common.blobstore.stream.write.UploadResponse;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
 import org.opensearch.common.blobstore.transfer.RemoteTransferContainer;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeIndexInputStream;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeInputStream;
 import org.opensearch.common.lucene.store.ByteArrayIndexInput;
 import org.opensearch.index.store.remote.metadata.RemoteSegmentMetadata;
 import org.opensearch.common.io.VersionedCodecStreamWrapper;
@@ -355,13 +357,22 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
         throws Exception {
 
         AtomicReference<Exception> exceptionRef = new AtomicReference<>();
+        long contentLength;
+        try (IndexInput indexInput = from.openInput(src, ioContext)) {
+            contentLength = indexInput.length();
+        }
         RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
-            from,
-            ioContext,
             src,
             remoteFileName,
+            contentLength,
             true,
-            WritePriority.NORMAL
+            WritePriority.NORMAL,
+            new RemoteTransferContainer.OffsetRangeInputStreamSupplier() {
+                @Override
+                public OffsetRangeInputStream get(long size, long position) throws IOException {
+                    return new OffsetRangeIndexInputStream(from.openInput(src, ioContext), size, position);
+                }
+            }
         );
         WriteContext writeContext = remoteTransferContainer.createWriteContext();
         CompletableFuture<UploadResponse> uploadFuture = remoteDataDirectory.getBlobContainer().writeBlobByStreams(writeContext);
