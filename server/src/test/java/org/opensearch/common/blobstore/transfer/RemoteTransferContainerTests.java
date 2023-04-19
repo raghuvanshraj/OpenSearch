@@ -124,7 +124,8 @@ public class RemoteTransferContainerTests extends OpenSearchTestCase {
                     public OffsetRangeInputStream get(long size, long position) throws IOException {
                         return new OffsetRangeFileInputStream(testFile, size, position);
                     }
-                }
+                },
+                0
             )
         ) {
             remoteTransferContainer.supplyStreamContext(16);

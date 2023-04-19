@@ -22,6 +22,7 @@ import org.opensearch.common.blobstore.transfer.RemoteTransferContainer;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeFileInputStream;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeInputStream;
 import org.opensearch.index.translog.ChannelFactory;
+import org.opensearch.index.translog.checked.TranslogCheckedContainer;
 import org.opensearch.index.translog.transfer.FileSnapshot.TransferFileSnapshot;
 import org.opensearch.threadpool.ThreadPool;
 
@@ -125,8 +126,16 @@ public class BlobStoreTransferService implements TransferService {
         try {
             ChannelFactory channelFactory = FileChannel::open;
             long contentLength;
+            long expectedChecksum;
             try (FileChannel channel = channelFactory.open(fileSnapshot.getPath(), StandardOpenOption.READ)) {
                 contentLength = channel.size();
+                TranslogCheckedContainer translogCheckedContainer = new TranslogCheckedContainer(
+                    channel,
+                    0,
+                    (int) contentLength,
+                    fileSnapshot.getName()
+                );
+                expectedChecksum = translogCheckedContainer.getChecksum();
             }
             RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
                 fileSnapshot.getName(),
@@ -134,7 +143,8 @@ public class BlobStoreTransferService implements TransferService {
                 contentLength,
                 true,
                 writePriority,
-                (size, position) -> new OffsetRangeFileInputStream(fileSnapshot.getPath(), size, position)
+                (size, position) -> new OffsetRangeFileInputStream(fileSnapshot.getPath(), size, position),
+                expectedChecksum
             );
             WriteContext writeContext = remoteTransferContainer.createWriteContext();
             CompletableFuture<UploadResponse> uploadFuture = blobStore.blobContainer(blobPath).writeBlobByStreams(writeContext);
