@@ -35,7 +35,7 @@ public class RemoteTransferContainerTests extends OpenSearchTestCase {
         Files.write(testFile, randomByteArrayOfLength(TEST_FILE_SIZE_BYTES), StandardOpenOption.APPEND);
     }
 
-    public void testSupplyStreamContextForPathDivisibleParts() throws IOException, InterruptedException {
+    public void testSupplyStreamContextDivisibleParts() throws IOException, InterruptedException {
         try (
             RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
                 testFile.getFileName().toString(),
@@ -55,7 +55,7 @@ public class RemoteTransferContainerTests extends OpenSearchTestCase {
         }
     }
 
-    public void testSupplyStreamContextForPathNonDivisibleParts() throws IOException, InterruptedException {
+    public void testSupplyStreamContextNonDivisibleParts() throws IOException, InterruptedException {
         try (
             RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
                 testFile.getFileName().toString(),
