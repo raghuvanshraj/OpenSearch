@@ -429,7 +429,7 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
 
     private void postUpload(Directory from, String src, String remoteFilename) throws IOException {
         String checksum = getChecksumOfLocalFile(from, src);
-        UploadedSegmentMetadata segmentMetadata = new UploadedSegmentMetadata(src, remoteFilename, checksum);
+        UploadedSegmentMetadata segmentMetadata = new UploadedSegmentMetadata(src, remoteFilename, checksum, from.fileLength(src));
         segmentsUploadedToRemoteStore.put(src, segmentMetadata);
     }
 
