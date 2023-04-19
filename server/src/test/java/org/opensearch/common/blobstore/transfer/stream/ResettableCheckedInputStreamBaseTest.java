@@ -13,7 +13,6 @@ import org.junit.Before;
 import org.opensearch.test.OpenSearchTestCase;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -28,15 +27,15 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
     private ResettableCheckedInputStream[] resettableCheckedInputStreams;
 
     static class InputStreamContainer {
-        private final InputStream inputStream;
+        private final OffsetRangeInputStream inputStream;
         private final Supplier<Long> inputStreamPosSupplier;
 
-        public InputStreamContainer(InputStream inputStream, Supplier<Long> inputStreamPosSupplier) {
+        public InputStreamContainer(OffsetRangeInputStream inputStream, Supplier<Long> inputStreamPosSupplier) {
             this.inputStream = inputStream;
             this.inputStreamPosSupplier = inputStreamPosSupplier;
         }
 
-        public InputStream getInputStream() {
+        public OffsetRangeInputStream getInputStream() {
             return inputStream;
         }
 
@@ -64,8 +63,7 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
             InputStreamContainer inputStreamContainer = provideInputStreamContainer(offset, 1);
             ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
                 inputStreamContainer.getInputStream(),
-                testFile.getFileName().toString(),
-                inputStreamContainer.getInputStreamPosSupplier()
+                testFile.getFileName().toString()
             );
             resettableCheckedInputStreams[readIdx] = resettableCheckedInputStream;
             threads[readIdx] = new Thread(() -> {
@@ -92,8 +90,7 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
             InputStreamContainer inputStreamContainer = provideInputStreamContainer(offset, readByteCount);
             ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
                 inputStreamContainer.getInputStream(),
-                testFile.getFileName().toString(),
-                inputStreamContainer.getInputStreamPosSupplier()
+                testFile.getFileName().toString()
             );
             resettableCheckedInputStreams[readIdx] = resettableCheckedInputStream;
             threads[readIdx] = new Thread(() -> {
@@ -125,8 +122,7 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
             InputStreamContainer inputStreamContainer = provideInputStreamContainer(offset, readByteCount);
             ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
                 inputStreamContainer.getInputStream(),
-                testFile.getFileName().toString(),
-                inputStreamContainer.getInputStreamPosSupplier()
+                testFile.getFileName().toString()
             );
             resettableCheckedInputStreams[readIdx] = resettableCheckedInputStream;
             int finalRunIdx = readIdx;
@@ -163,8 +159,7 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
         InputStreamContainer inputStreamContainer = provideInputStreamContainer(0, TEST_FILE_SIZE_BYTES);
         ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
             inputStreamContainer.getInputStream(),
-            testFile.getFileName().toString(),
-            inputStreamContainer.getInputStreamPosSupplier()
+            testFile.getFileName().toString()
         );
         resettableCheckedInputStreams = new ResettableCheckedInputStream[] { resettableCheckedInputStream };
 
@@ -178,8 +173,7 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
         InputStreamContainer inputStreamContainer = provideInputStreamContainer(0, TEST_FILE_SIZE_BYTES);
         ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
             inputStreamContainer.getInputStream(),
-            testFile.getFileName().toString(),
-            inputStreamContainer.getInputStreamPosSupplier()
+            testFile.getFileName().toString()
         );
         resettableCheckedInputStreams = new ResettableCheckedInputStream[] { resettableCheckedInputStream };
 

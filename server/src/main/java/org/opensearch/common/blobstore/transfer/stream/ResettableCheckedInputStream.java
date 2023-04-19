@@ -10,8 +10,6 @@ package org.opensearch.common.blobstore.transfer.stream;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.function.Supplier;
 
 /**
  * ResettableCheckedInputStream is a modified implementation of {@link java.util.zip.CheckedInputStream} that supports
@@ -21,20 +19,19 @@ public class ResettableCheckedInputStream extends FilterInputStream {
 
     private final long startPos;
     private final String file;
-    private final Supplier<Long> posSupplier;
+    private final OffsetRangeInputStream offsetRangeInputStream;
 
     /**
      * Creates a new ResettableCheckedInputStream object
      *
-     * @param in The underlying input stream
+     * @param offsetRangeInputStream   The underlying input stream
      * @param file Name of the file
-     * @param posSupplier A supplier to fetch the current position of the file pointer
      */
-    public ResettableCheckedInputStream(InputStream in, String file, Supplier<Long> posSupplier) {
-        super(in);
-        this.startPos = posSupplier.get();
+    public ResettableCheckedInputStream(OffsetRangeInputStream offsetRangeInputStream, String file) throws IOException {
+        super(offsetRangeInputStream);
+        this.offsetRangeInputStream = offsetRangeInputStream;
+        this.startPos = offsetRangeInputStream.getFilePointer();
         this.file = file;
-        this.posSupplier = posSupplier;
     }
 
     /**
@@ -97,7 +94,7 @@ public class ResettableCheckedInputStream extends FilterInputStream {
 
     @Override
     public synchronized void reset() throws IOException {
-        if (startPos == posSupplier.get()) {
+        if (startPos == offsetRangeInputStream.getFilePointer()) {
             return;
         }
         super.reset();

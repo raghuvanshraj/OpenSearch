@@ -10,9 +10,6 @@ package org.opensearch.common.blobstore.transfer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
 import org.opensearch.common.SetOnce;
 import org.opensearch.common.Stream;
 import org.opensearch.common.StreamProvider;
@@ -20,17 +17,13 @@ import org.opensearch.common.TransferPartStreamSupplier;
 import org.opensearch.common.blobstore.stream.StreamContext;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
-import org.opensearch.common.blobstore.transfer.stream.OffsetRangeFileInputStream;
-import org.opensearch.common.blobstore.transfer.stream.OffsetRangeIndexInputStream;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeInputStream;
 import org.opensearch.common.blobstore.transfer.stream.ResettableCheckedInputStream;
-import org.opensearch.index.translog.ChannelFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.channels.FileChannel;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
 /**
@@ -38,9 +31,6 @@ import java.util.Objects;
  */
 public class RemoteTransferContainer implements Closeable {
 
-    private Path localFile;
-    private Directory directory;
-    private IOContext ioContext;
     private int numberOfParts;
     private long partSize;
     private long lastPartSize;
@@ -51,65 +41,34 @@ public class RemoteTransferContainer implements Closeable {
     private final String remoteFileName;
     private final boolean failTransferIfFileExists;
     private final WritePriority writePriority;
+    private final OffsetRangeInputStreamSupplier offsetRangeInputStreamSupplier;
 
     private static final Logger log = LogManager.getLogger(RemoteTransferContainer.class);
 
     /**
      * Construct a new RemoteTransferContainer object using {@link Path} reference to the file.
      *
-     * @param localFile A {@link Path} reference to the local file
-     * @param localFileName Name of the local file
-     * @param remoteFileName Name of the remote file
-     * @param failTransferIfFileExists A boolean to determine if upload has to be failed if file exists
-     * @param writePriority The {@link WritePriority} of current upload
-     * @throws IOException If opening file channel to the local file fails
+     * @param localFileName                  Name of the local file
+     * @param remoteFileName                 Name of the remote file
+     * @param contentLength                  Total content length of the file to be uploaded
+     * @param failTransferIfFileExists       A boolean to determine if upload has to be failed if file exists
+     * @param writePriority                  The {@link WritePriority} of current upload
+     * @param offsetRangeInputStreamSupplier A supplier to create OffsetRangeInputStreams
      */
     public RemoteTransferContainer(
-        Path localFile,
         String localFileName,
         String remoteFileName,
+        long contentLength,
         boolean failTransferIfFileExists,
-        WritePriority writePriority
-    ) throws IOException {
+        WritePriority writePriority,
+        OffsetRangeInputStreamSupplier offsetRangeInputStreamSupplier
+    ) {
         this.localFileName = localFileName;
         this.remoteFileName = remoteFileName;
-        this.localFile = localFile;
+        this.contentLength = contentLength;
         this.failTransferIfFileExists = failTransferIfFileExists;
         this.writePriority = writePriority;
-
-        ChannelFactory channelFactory = FileChannel::open;
-        localFile.getFileSystem().provider();
-        try (FileChannel channel = channelFactory.open(localFile, StandardOpenOption.READ)) {
-            this.contentLength = channel.size();
-        }
-    }
-
-    /**
-     * @param directory The directory which contains the local file
-     * @param ioContext The {@link IOContext} which will be used to open {@link IndexInput} to the file
-     * @param localFileName Name of the local file
-     * @param remoteFileName Name of the remote file
-     * @param failTransferIfFileExists A boolean to determine if upload has to be failed if file exists
-     * @param writePriority The {@link WritePriority} of current upload
-     * @throws IOException If opening {@link IndexInput} on local file fails
-     */
-    public RemoteTransferContainer(
-        Directory directory,
-        IOContext ioContext,
-        String localFileName,
-        String remoteFileName,
-        boolean failTransferIfFileExists,
-        WritePriority writePriority
-    ) throws IOException {
-        this.localFileName = localFileName;
-        this.remoteFileName = remoteFileName;
-        this.directory = directory;
-        this.failTransferIfFileExists = failTransferIfFileExists;
-        try (IndexInput indexInput = directory.openInput(this.localFileName, ioContext)) {
-            this.contentLength = indexInput.length();
-        }
-        this.ioContext = ioContext;
-        this.writePriority = writePriority;
+        this.offsetRangeInputStreamSupplier = offsetRangeInputStreamSupplier;
     }
 
     /**
@@ -155,54 +114,23 @@ public class RemoteTransferContainer implements Closeable {
     private TransferPartStreamSupplier getTransferPartStreamSupplier() {
         return ((partNo, size, position) -> {
             assert inputStreams.get() != null : "expected inputStreams to be initialised";
-            if (localFile != null) {
-                return getMultiPartStreamSupplierForFile(partNo, size, position).get();
-            } else {
-                return getMultiPartStreamSupplierForIndexInput(partNo, size, position).get();
-            }
+            return getMultipartStreamSupplier(partNo, size, position).get();
         });
+    }
+
+    public interface OffsetRangeInputStreamSupplier {
+        OffsetRangeInputStream get(long size, long position) throws IOException;
     }
 
     interface LocalStreamSupplier<Stream> {
         Stream get() throws IOException;
     }
 
-    private LocalStreamSupplier<Stream> getMultiPartStreamSupplierForFile(final int streamIdx, final long size, final long position) {
+    private LocalStreamSupplier<Stream> getMultipartStreamSupplier(final int streamIdx, final long size, final long position) {
         return () -> {
             try {
-                OffsetRangeFileInputStream offsetRangeInputStream = new OffsetRangeFileInputStream(localFile, size, position);
-                ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(
-                    offsetRangeInputStream,
-                    localFileName,
-                    () -> {
-                        try {
-                            return offsetRangeInputStream.getFileChannel().position();
-                        } catch (IOException e) {
-                            log.error("Error getting position of file channel", e);
-                        }
-                        return null;
-                    }
-                );
-                Objects.requireNonNull(inputStreams.get())[streamIdx] = checkedInputStream;
-
-                return new Stream(checkedInputStream, size, position);
-            } catch (IOException e) {
-                log.error("Failed to create input stream", e);
-                throw e;
-            }
-        };
-    }
-
-    private LocalStreamSupplier<Stream> getMultiPartStreamSupplierForIndexInput(final int streamIdx, final long size, final long position) {
-        return () -> {
-            try {
-                IndexInput indexInput = directory.openInput(localFileName, ioContext);
-                OffsetRangeIndexInputStream offsetRangeInputStream = new OffsetRangeIndexInputStream(indexInput, size, position);
-                ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(
-                    offsetRangeInputStream,
-                    localFileName,
-                    indexInput::getFilePointer
-                );
+                OffsetRangeInputStream offsetRangeInputStream = offsetRangeInputStreamSupplier.get(size, position);
+                ResettableCheckedInputStream checkedInputStream = new ResettableCheckedInputStream(offsetRangeInputStream, localFileName);
                 Objects.requireNonNull(inputStreams.get())[streamIdx] = checkedInputStream;
 
                 return new Stream(checkedInputStream, size, position);

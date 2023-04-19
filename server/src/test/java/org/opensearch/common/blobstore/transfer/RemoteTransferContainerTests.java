@@ -8,12 +8,12 @@
 
 package org.opensearch.common.blobstore.transfer;
 
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.NIOFSDirectory;
 import org.junit.Before;
 import org.opensearch.common.Stream;
 import org.opensearch.common.blobstore.stream.StreamContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeFileInputStream;
+import org.opensearch.common.blobstore.transfer.stream.OffsetRangeInputStream;
 import org.opensearch.test.OpenSearchTestCase;
 
 import java.io.IOException;
@@ -38,26 +38,17 @@ public class RemoteTransferContainerTests extends OpenSearchTestCase {
     public void testSupplyStreamContextForPathDivisibleParts() throws IOException, InterruptedException {
         try (
             RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
-                testFile,
                 testFile.getFileName().toString(),
                 testFile.getFileName().toString(),
+                TEST_FILE_SIZE_BYTES,
                 true,
-                WritePriority.HIGH
-            )
-        ) {
-            testSupplyStreamContext(remoteTransferContainer, 16, 16, 8);
-        }
-    }
-
-    public void testSupplyStreamContextForDirectoryDivisibleParts() throws IOException, InterruptedException {
-        try (
-            RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
-                new NIOFSDirectory(testFile.getParent()),
-                IOContext.DEFAULT,
-                testFile.getFileName().toString(),
-                testFile.getFileName().toString(),
-                true,
-                WritePriority.HIGH
+                WritePriority.HIGH,
+                new RemoteTransferContainer.OffsetRangeInputStreamSupplier() {
+                    @Override
+                    public OffsetRangeInputStream get(long size, long position) throws IOException {
+                        return new OffsetRangeFileInputStream(testFile, size, position);
+                    }
+                }
             )
         ) {
             testSupplyStreamContext(remoteTransferContainer, 16, 16, 8);
@@ -67,26 +58,17 @@ public class RemoteTransferContainerTests extends OpenSearchTestCase {
     public void testSupplyStreamContextForPathNonDivisibleParts() throws IOException, InterruptedException {
         try (
             RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
-                testFile,
                 testFile.getFileName().toString(),
                 testFile.getFileName().toString(),
+                TEST_FILE_SIZE_BYTES,
                 true,
-                WritePriority.HIGH
-            )
-        ) {
-            testSupplyStreamContext(remoteTransferContainer, 10, 8, 13);
-        }
-    }
-
-    public void testSupplyStreamContextForDirectoryNonDivisibleParts() throws IOException, InterruptedException {
-        try (
-            RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
-                new NIOFSDirectory(testFile.getParent()),
-                IOContext.DEFAULT,
-                testFile.getFileName().toString(),
-                testFile.getFileName().toString(),
-                true,
-                WritePriority.HIGH
+                WritePriority.HIGH,
+                new RemoteTransferContainer.OffsetRangeInputStreamSupplier() {
+                    @Override
+                    public OffsetRangeInputStream get(long size, long position) throws IOException {
+                        return new OffsetRangeFileInputStream(testFile, size, position);
+                    }
+                }
             )
         ) {
             testSupplyStreamContext(remoteTransferContainer, 10, 8, 13);
@@ -130,11 +112,17 @@ public class RemoteTransferContainerTests extends OpenSearchTestCase {
     public void testSupplyStreamContextCalledTwice() throws IOException {
         try (
             RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
-                testFile,
                 testFile.getFileName().toString(),
                 testFile.getFileName().toString(),
+                TEST_FILE_SIZE_BYTES,
                 true,
-                WritePriority.HIGH
+                WritePriority.HIGH,
+                new RemoteTransferContainer.OffsetRangeInputStreamSupplier() {
+                    @Override
+                    public OffsetRangeInputStream get(long size, long position) throws IOException {
+                        return new OffsetRangeFileInputStream(testFile, size, position);
+                    }
+                }
             )
         ) {
             remoteTransferContainer.supplyStreamContext(16);

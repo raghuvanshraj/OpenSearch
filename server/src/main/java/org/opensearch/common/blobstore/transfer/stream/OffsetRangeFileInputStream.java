@@ -18,7 +18,7 @@ import java.nio.file.StandardOpenOption;
 /**
  * OffsetRangeFileInputStream extends InputStream to read from a specified offset using FileChannel
  */
-public class OffsetRangeFileInputStream extends InputStream {
+public class OffsetRangeFileInputStream extends OffsetRangeInputStream {
     private final InputStream inputStream;
     private final FileChannel fileChannel;
 
@@ -115,5 +115,10 @@ public class OffsetRangeFileInputStream extends InputStream {
     @Override
     public void close() throws IOException {
         inputStream.close();
+    }
+
+    @Override
+    public long getFilePointer() throws IOException {
+        return fileChannel.position();
     }
 }
