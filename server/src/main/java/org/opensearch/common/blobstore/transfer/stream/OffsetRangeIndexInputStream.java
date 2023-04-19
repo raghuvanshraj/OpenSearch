@@ -61,13 +61,13 @@ public class OffsetRangeIndexInputStream extends OffsetRangeInputStream {
     }
 
     @Override
-    public void close() throws IOException {
-        inputStreamIndexInput.close();
-        indexInput.close();
+    public long getFilePointer() throws IOException {
+        return indexInput.getFilePointer();
     }
 
     @Override
-    public long getFilePointer() throws IOException {
-        return indexInput.getFilePointer();
+    public void close() throws IOException {
+        inputStreamIndexInput.close();
+        indexInput.close();
     }
 }

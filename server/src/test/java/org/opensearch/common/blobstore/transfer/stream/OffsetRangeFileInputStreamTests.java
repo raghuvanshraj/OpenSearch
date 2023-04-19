@@ -13,15 +13,7 @@ import java.io.IOException;
 public class OffsetRangeFileInputStreamTests extends ResettableCheckedInputStreamBaseTest {
 
     @Override
-    protected InputStreamContainer provideInputStreamContainer(int offset, long size) throws IOException {
-        OffsetRangeFileInputStream offsetRangeFileInputStream = new OffsetRangeFileInputStream(testFile, size, offset);
-        return new InputStreamContainer(offsetRangeFileInputStream, () -> {
-            try {
-                return offsetRangeFileInputStream.getFileChannel().position();
-            } catch (IOException e) {
-                fail("IOException while fetching fileChannel position");
-            }
-            return null;
-        });
+    protected OffsetRangeInputStream getOffsetRangeInputStream(long size, long position) throws IOException {
+        return new OffsetRangeFileInputStream(testFile, size, position);
     }
 }

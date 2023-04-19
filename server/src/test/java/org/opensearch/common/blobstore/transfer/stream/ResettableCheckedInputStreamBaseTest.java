@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.function.Supplier;
 
 public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTestCase {
 
@@ -26,24 +25,6 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
     protected Path testFile;
     private ResettableCheckedInputStream[] resettableCheckedInputStreams;
 
-    static class InputStreamContainer {
-        private final OffsetRangeInputStream inputStream;
-        private final Supplier<Long> inputStreamPosSupplier;
-
-        public InputStreamContainer(OffsetRangeInputStream inputStream, Supplier<Long> inputStreamPosSupplier) {
-            this.inputStream = inputStream;
-            this.inputStreamPosSupplier = inputStreamPosSupplier;
-        }
-
-        public OffsetRangeInputStream getInputStream() {
-            return inputStream;
-        }
-
-        public Supplier<Long> getInputStreamPosSupplier() {
-            return inputStreamPosSupplier;
-        }
-    }
-
     @Override
     @Before
     public void setUp() throws Exception {
@@ -52,7 +33,7 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
         Files.write(testFile, bytesToWrite, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
-    protected abstract InputStreamContainer provideInputStreamContainer(int offset, long size) throws IOException;
+    protected abstract OffsetRangeInputStream getOffsetRangeInputStream(long size, long position) throws IOException;
 
     public void testReadSingleByte() throws IOException, InterruptedException {
         final int nParallelReads = 10;
@@ -60,9 +41,9 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
         resettableCheckedInputStreams = new ResettableCheckedInputStream[nParallelReads];
         for (int readIdx = 0; readIdx < nParallelReads; readIdx++) {
             int offset = randomInt(TEST_FILE_SIZE_BYTES - 1);
-            InputStreamContainer inputStreamContainer = provideInputStreamContainer(offset, 1);
+            OffsetRangeInputStream offsetRangeInputStream = getOffsetRangeInputStream(1, offset);
             ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
-                inputStreamContainer.getInputStream(),
+                offsetRangeInputStream,
                 testFile.getFileName().toString()
             );
             resettableCheckedInputStreams[readIdx] = resettableCheckedInputStream;
@@ -87,9 +68,9 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
         for (int readIdx = 0; readIdx < nParallelReads; readIdx++) {
             int readByteCount = randomInt(TEST_FILE_SIZE_BYTES - 1) + 1;
             int offset = randomInt(TEST_FILE_SIZE_BYTES - readByteCount);
-            InputStreamContainer inputStreamContainer = provideInputStreamContainer(offset, readByteCount);
+            OffsetRangeInputStream offsetRangeInputStream = getOffsetRangeInputStream(readByteCount, offset);
             ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
-                inputStreamContainer.getInputStream(),
+                offsetRangeInputStream,
                 testFile.getFileName().toString()
             );
             resettableCheckedInputStreams[readIdx] = resettableCheckedInputStream;
@@ -119,9 +100,9 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
         for (int readIdx = 0; readIdx < nParallelReads; readIdx++) {
             int readByteCount = randomInt(TEST_FILE_SIZE_BYTES - 1) + 1;
             int offset = randomInt(TEST_FILE_SIZE_BYTES - readByteCount);
-            InputStreamContainer inputStreamContainer = provideInputStreamContainer(offset, readByteCount);
+            OffsetRangeInputStream offsetRangeInputStream = getOffsetRangeInputStream(readByteCount, offset);
             ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
-                inputStreamContainer.getInputStream(),
+                offsetRangeInputStream,
                 testFile.getFileName().toString()
             );
             resettableCheckedInputStreams[readIdx] = resettableCheckedInputStream;
@@ -134,12 +115,12 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
                         resettableCheckedInputStream.read();
                         if (!streamMarked && randomBoolean()) {
                             streamMarked = true;
-                            streamMarkPosition = inputStreamContainer.getInputStreamPosSupplier().get();
+                            streamMarkPosition = offsetRangeInputStream.getFilePointer();
                             resettableCheckedInputStream.mark(readByteCount);
                         }
                     }
                     if (!streamMarked) {
-                        streamMarkPosition = inputStreamContainer.getInputStreamPosSupplier().get();
+                        streamMarkPosition = offsetRangeInputStream.getFilePointer();
                         resettableCheckedInputStream.mark(readByteCount);
                     }
                     resettableCheckedInputStream.reset();
@@ -156,9 +137,9 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
     }
 
     public void testReadAfterSkip() throws IOException {
-        InputStreamContainer inputStreamContainer = provideInputStreamContainer(0, TEST_FILE_SIZE_BYTES);
+        OffsetRangeInputStream offsetRangeInputStream = getOffsetRangeInputStream(TEST_FILE_SIZE_BYTES, 0);
         ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
-            inputStreamContainer.getInputStream(),
+            offsetRangeInputStream,
             testFile.getFileName().toString()
         );
         resettableCheckedInputStreams = new ResettableCheckedInputStream[] { resettableCheckedInputStream };
@@ -170,9 +151,9 @@ public abstract class ResettableCheckedInputStreamBaseTest extends OpenSearchTes
     }
 
     public void testReadLastByte() throws IOException {
-        InputStreamContainer inputStreamContainer = provideInputStreamContainer(0, TEST_FILE_SIZE_BYTES);
+        OffsetRangeInputStream offsetRangeInputStream = getOffsetRangeInputStream(TEST_FILE_SIZE_BYTES, 0);
         ResettableCheckedInputStream resettableCheckedInputStream = new ResettableCheckedInputStream(
-            inputStreamContainer.getInputStream(),
+            offsetRangeInputStream,
             testFile.getFileName().toString()
         );
         resettableCheckedInputStreams = new ResettableCheckedInputStream[] { resettableCheckedInputStream };

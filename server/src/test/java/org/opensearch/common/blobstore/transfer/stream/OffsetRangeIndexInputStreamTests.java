@@ -10,7 +10,6 @@ package org.opensearch.common.blobstore.transfer.stream;
 
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.junit.After;
 import org.junit.Before;
@@ -29,9 +28,8 @@ public class OffsetRangeIndexInputStreamTests extends ResettableCheckedInputStre
     }
 
     @Override
-    protected InputStreamContainer provideInputStreamContainer(int offset, long size) throws IOException {
-        IndexInput indexInput = directory.openInput(testFile.getFileName().toString(), IOContext.DEFAULT);
-        return new InputStreamContainer(new OffsetRangeIndexInputStream(indexInput, size, offset), indexInput::getFilePointer);
+    protected OffsetRangeInputStream getOffsetRangeInputStream(long size, long position) throws IOException {
+        return new OffsetRangeIndexInputStream(directory.openInput(testFile.getFileName().toString(), IOContext.DEFAULT), size, position);
     }
 
     @Override

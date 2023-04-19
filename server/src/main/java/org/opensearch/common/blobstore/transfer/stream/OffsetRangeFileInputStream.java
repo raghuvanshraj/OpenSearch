@@ -54,10 +54,6 @@ public class OffsetRangeFileInputStream extends OffsetRangeInputStream {
         }
     }
 
-    public FileChannel getFileChannel() {
-        return fileChannel;
-    }
-
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         if (b == null) {
@@ -113,12 +109,12 @@ public class OffsetRangeFileInputStream extends OffsetRangeInputStream {
     }
 
     @Override
-    public void close() throws IOException {
-        inputStream.close();
+    public long getFilePointer() throws IOException {
+        return fileChannel.position();
     }
 
     @Override
-    public long getFilePointer() throws IOException {
-        return fileChannel.position();
+    public void close() throws IOException {
+        inputStream.close();
     }
 }
