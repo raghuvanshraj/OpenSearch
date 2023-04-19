@@ -92,7 +92,6 @@ public class RemoteTransferContainer implements Closeable {
             contentLength,
             failTransferIfFileExists,
             writePriority,
-            expectedChecksum,
             this::finalizeUpload
         );
     }

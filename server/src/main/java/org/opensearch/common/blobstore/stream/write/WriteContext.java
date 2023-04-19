@@ -21,17 +21,16 @@ public class WriteContext {
     private final long fileSize;
     private final boolean failIfAlreadyExists;
     private final WritePriority writePriority;
-    private final long checksum;
     private final UploadFinalizer uploadFinalizer;
 
     /**
      * Construct a new WriteContext object
      *
-     * @param fileName The name of the file being uploaded
+     * @param fileName              The name of the file being uploaded
      * @param streamContextSupplier A supplier that will provide StreamContext to the plugin
-     * @param fileSize The total size of the file being uploaded
-     * @param failIfAlreadyExists A boolean to fail the upload is the file exists
-     * @param writePriority The <code>WritePriority</code> of this upload
+     * @param fileSize              The total size of the file being uploaded
+     * @param failIfAlreadyExists   A boolean to fail the upload is the file exists
+     * @param writePriority         The <code>WritePriority</code> of this upload
      */
     public WriteContext(
         String fileName,
@@ -39,7 +38,6 @@ public class WriteContext {
         long fileSize,
         boolean failIfAlreadyExists,
         WritePriority writePriority,
-        long checksum,
         UploadFinalizer uploadFinalizer
     ) {
         this.fileName = fileName;
@@ -47,7 +45,6 @@ public class WriteContext {
         this.fileSize = fileSize;
         this.failIfAlreadyExists = failIfAlreadyExists;
         this.writePriority = writePriority;
-        this.checksum = checksum;
         this.uploadFinalizer = uploadFinalizer;
     }
 
@@ -85,13 +82,6 @@ public class WriteContext {
      */
     public WritePriority getWritePriority() {
         return writePriority;
-    }
-
-    /**
-     * @return The local checksum of the file being uploaded
-     */
-    public long getChecksum() {
-        return checksum;
     }
 
     public UploadFinalizer getUploadFinalizer() {
