@@ -118,6 +118,9 @@ public class RemoteTransferContainer implements Closeable {
         });
     }
 
+    /**
+     * OffsetRangeInputStreamSupplier is used to get the offset based input streams at runtime
+     */
     public interface OffsetRangeInputStreamSupplier {
         OffsetRangeInputStream get(long size, long position) throws IOException;
     }
