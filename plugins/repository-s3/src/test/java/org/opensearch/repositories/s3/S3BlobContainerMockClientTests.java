@@ -35,6 +35,7 @@ import org.opensearch.test.OpenSearchTestCase;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
@@ -109,6 +110,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             doAnswer(this::doOnPartUpload).when(asyncClient).uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class));
             doAnswer(this::doOnCompleteMultipartUpload).when(asyncClient)
                 .completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+            doAnswer(this::doOnAbortMultipartUpload).when(asyncClient).abortMultipartUpload(any(AbortMultipartUploadRequest.class));
         }
 
         private void setupFailureBooleans(
@@ -213,6 +215,23 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
                 } else {
                     completableFuture.complete(CompleteMultipartUploadResponse.builder().build());
                 }
+            }).start();
+
+            return completableFuture;
+        }
+
+        private CompletableFuture<AbortMultipartUploadResponse> doOnAbortMultipartUpload(InvocationOnMock invocationOnMock) {
+            AbortMultipartUploadRequest abortMultipartUploadRequest = invocationOnMock.getArgument(0);
+            assertEquals(multipartUploadId, abortMultipartUploadRequest.uploadId());
+            CompletableFuture<AbortMultipartUploadResponse> completableFuture = new CompletableFuture<>();
+            new Thread(() -> {
+                try {
+                    Thread.sleep(randomInt(maxDelayInFutureCompletionMillis));
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                completableFuture.complete(AbortMultipartUploadResponse.builder().build());
+
             }).start();
 
             return completableFuture;
