@@ -459,7 +459,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
                         calculateNumberOfParts(bytes.length, partSize)
                     );
                 }
-            }, bytes.length, false, WritePriority.NORMAL, 0, new UploadFinalizer() {
+            }, bytes.length, false, WritePriority.NORMAL, new UploadFinalizer() {
                 @Override
                 public void accept(boolean uploadSuccess) {
                     assertTrue(uploadSuccess);
@@ -512,7 +512,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
                         calculateNumberOfParts(blobSize, partSize)
                     );
                 }
-            }, blobSize, false, WritePriority.HIGH, 0, new UploadFinalizer() {
+            }, blobSize, false, WritePriority.HIGH, new UploadFinalizer() {
                 @Override
                 public void accept(boolean uploadSuccess) {
                     assertTrue(uploadSuccess);

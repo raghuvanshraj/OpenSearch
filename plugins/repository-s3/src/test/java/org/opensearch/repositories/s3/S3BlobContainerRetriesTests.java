@@ -327,7 +327,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
                         calculateNumberOfParts(bytes.length, partSize)
                     );
                 }
-            }, bytes.length, false, WritePriority.NORMAL, 0, new UploadFinalizer() {
+            }, bytes.length, false, WritePriority.NORMAL, new UploadFinalizer() {
                 @Override
                 public void accept(boolean uploadSuccess) {
                     assertTrue(uploadSuccess);
