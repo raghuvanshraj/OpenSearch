@@ -18,14 +18,17 @@ import java.nio.file.Path;
 
 public class MockFsBlobStore extends FsBlobStore {
 
-    public MockFsBlobStore(int bufferSizeInBytes, Path path, boolean readonly) throws IOException {
+    private final boolean triggerDataIntegrityFailure;
+
+    public MockFsBlobStore(int bufferSizeInBytes, Path path, boolean readonly, boolean triggerDataIntegrityFailure) throws IOException {
         super(bufferSizeInBytes, path, readonly);
+        this.triggerDataIntegrityFailure = triggerDataIntegrityFailure;
     }
 
     @Override
     public BlobContainer blobContainer(BlobPath path) {
         try {
-            return new MockFsBlobContainer(this, path, buildAndCreate(path));
+            return new MockFsBlobContainer(this, path, buildAndCreate(path), triggerDataIntegrityFailure);
         } catch (IOException ex) {
             throw new OpenSearchException("failed to create blob container", ex);
         }

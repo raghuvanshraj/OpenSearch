@@ -11,6 +11,7 @@ package org.opensearch.common.blobstore.transfer;
 import com.jcraft.jzlib.JZlib;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.index.CorruptIndexException;
 import org.opensearch.common.SetOnce;
 import org.opensearch.common.Stream;
 import org.opensearch.common.StreamProvider;
@@ -18,13 +19,8 @@ import org.opensearch.common.TransferPartStreamSupplier;
 import org.opensearch.common.blobstore.stream.StreamContext;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
-import org.opensearch.common.blobstore.transfer.exception.CorruptedLocalFileException;
-import org.opensearch.common.blobstore.transfer.stream.OffsetRangeFileInputStream;
-import org.opensearch.common.blobstore.transfer.stream.OffsetRangeIndexInputStream;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeInputStream;
 import org.opensearch.common.blobstore.transfer.stream.ResettableCheckedInputStream;
-import org.opensearch.index.translog.ChannelFactory;
-import org.opensearch.index.translog.checked.TranslogCheckedContainer;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -160,13 +156,14 @@ public class RemoteTransferContainer implements Closeable {
             long actualChecksum = getActualChecksum();
             if (actualChecksum != expectedChecksum) {
                 throw new RuntimeException(
-                    new CorruptedLocalFileException(
+                    new CorruptIndexException(
                         "Data integrity check done after upload for file "
                             + localFileName
                             + " failed, actual checksum: "
                             + actualChecksum
                             + ", expected checksum: "
-                            + expectedChecksum
+                            + expectedChecksum,
+                        localFileName
                     )
                 );
             }

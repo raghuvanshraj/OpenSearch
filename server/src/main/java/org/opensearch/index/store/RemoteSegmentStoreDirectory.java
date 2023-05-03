@@ -18,6 +18,7 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.opensearch.ExceptionsHelper;
 import org.opensearch.common.UUIDs;
 import org.opensearch.common.blobstore.stream.write.UploadResponse;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
@@ -25,7 +26,6 @@ import org.opensearch.common.blobstore.stream.write.WritePriority;
 import org.opensearch.common.blobstore.transfer.RemoteTransferContainer;
 import org.opensearch.common.io.VersionedCodecStreamWrapper;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeIndexInputStream;
-import org.opensearch.common.blobstore.transfer.stream.OffsetRangeInputStream;
 import org.opensearch.common.lucene.store.ByteArrayIndexInput;
 import org.opensearch.common.util.ByteUtils;
 import org.opensearch.index.store.exception.ChecksumCombinationException;
@@ -355,7 +355,11 @@ public final class RemoteSegmentStoreDirectory extends FilterDirectory {
             CompletableFuture<Void> resultFuture = CompletableFuture.allOf(resultFutures.toArray(new CompletableFuture[0]));
             try {
                 resultFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
+            } catch (ExecutionException e) {
+                IOException corruptIndexException = ExceptionsHelper.unwrapCorruption(e);
+                if (corruptIndexException != null) {
+                    throw corruptIndexException;
+                }
                 throw e;
             }
         }

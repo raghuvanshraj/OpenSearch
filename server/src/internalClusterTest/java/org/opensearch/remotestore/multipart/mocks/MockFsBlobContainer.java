@@ -8,6 +8,7 @@
 
 package org.opensearch.remotestore.multipart.mocks;
 
+import org.apache.lucene.index.CorruptIndexException;
 import org.opensearch.common.Stream;
 import org.opensearch.common.StreamProvider;
 import org.opensearch.common.blobstore.BlobPath;
@@ -32,8 +33,11 @@ public class MockFsBlobContainer extends FsBlobContainer {
 
     private static final int TRANSFER_TIMEOUT_MILLIS = 30000;
 
-    public MockFsBlobContainer(FsBlobStore blobStore, BlobPath blobPath, Path path) {
+    private final boolean triggerDataIntegrityFailure;
+
+    public MockFsBlobContainer(FsBlobStore blobStore, BlobPath blobPath, Path path, boolean triggerDataIntegrityFailure) {
         super(blobStore, blobPath, path);
+        this.triggerDataIntegrityFailure = triggerDataIntegrityFailure;
     }
 
     @Override
@@ -96,9 +100,30 @@ public class MockFsBlobContainer extends FsBlobContainer {
                     + totalContentRead.get()
             );
         }
-        completableFuture.complete(new UploadResponse(true));
-        writeContext.getUploadFinalizer().accept(true);
+
+        try {
+            // bulks need to succeed for segment files to be generated
+            if (isSegmentFile(writeContext.getFileName()) && triggerDataIntegrityFailure) {
+                completableFuture.completeExceptionally(
+                    new RuntimeException(
+                        new CorruptIndexException(
+                            "Data integrity check failure for file: " + writeContext.getFileName(),
+                            writeContext.getFileName()
+                        )
+                    )
+                );
+            } else {
+                writeContext.getUploadFinalizer().accept(true);
+                completableFuture.complete(new UploadResponse(true));
+            }
+        } catch (Exception e) {
+            completableFuture.completeExceptionally(e);
+        }
 
         return completableFuture;
+    }
+
+    private boolean isSegmentFile(String filename) {
+        return !filename.endsWith(".tlog") && !filename.endsWith(".ckp");
     }
 }

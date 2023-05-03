@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.search.ReferenceManager;
@@ -215,6 +216,9 @@ public final class RemoteStoreRefreshListener implements ReferenceManager.Refres
             remoteDirectory.copyFilesFrom(storeDirectory, filteredFiles, IOContext.DEFAULT);
         } catch (Exception e) {
             uploadSuccess.set(false);
+            if (e instanceof CorruptIndexException) {
+                indexShard.failShard(e.getMessage(), e);
+            }
             // ToDO: Handle transient and permanent un-availability of the remote store (GitHub #3397)
             logger.warn(() -> new ParameterizedMessage("Exception: [{}] while uploading segment files", e), e);
         }

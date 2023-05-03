@@ -35,9 +35,4 @@ public class RemoteStoreMultipartIT extends RemoteStoreIT {
                 .setSettings(Settings.builder().put("location", path))
         );
     }
-
-    @Override
-    protected void deleteRepository() {
-        assertAcked(clusterAdmin().prepareDeleteRepository(REPOSITORY_NAME));
-    }
 }

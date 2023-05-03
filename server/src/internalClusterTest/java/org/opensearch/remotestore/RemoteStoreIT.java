@@ -107,13 +107,9 @@ public class RemoteStoreIT extends OpenSearchIntegTestCase {
         );
     }
 
-    protected void deleteRepository() {
-        assertAcked(clusterAdmin().prepareDeleteRepository(REPOSITORY_NAME));
-    }
-
     @After
     public void teardown() {
-        deleteRepository();
+        assertAcked(clusterAdmin().prepareDeleteRepository(REPOSITORY_NAME));
     }
 
     private IndexResponse indexSingleDoc() {
