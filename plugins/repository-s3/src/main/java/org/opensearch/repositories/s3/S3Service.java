@@ -32,25 +32,25 @@
 
 package org.opensearch.repositories.s3;
 
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSSessionCredentialsProvider;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper;
-import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
-import com.amazonaws.auth.STSAssumeRoleWithWebIdentitySessionCredentialsProvider;
-import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.http.IdleConnectionReaper;
-import com.amazonaws.http.SystemPropertyTlsKeyManagersProvider;
-import com.amazonaws.http.conn.ssl.SdkTLSSocketFactory;
-import com.amazonaws.internal.SdkSSLContext;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.internal.Constants;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
+import software.amazon.awssdk.ClientConfiguration;
+import software.amazon.awssdk.auth.AWSCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.AWSSessionCredentialsProvider;
+import software.amazon.awssdk.auth.AWSStaticCredentialsProvider;
+import software.amazon.awssdk.auth.EC2ContainerCredentialsProviderWrapper;
+import software.amazon.awssdk.auth.STSAssumeRoleSessionCredentialsProvider;
+import software.amazon.awssdk.auth.STSAssumeRoleWithWebIdentitySessionCredentialsProvider;
+import software.amazon.awssdk.client.builder.AwsClientBuilder;
+import software.amazon.awssdk.client.builder.AwsClientBuilder.EndpointConfiguration;
+import software.amazon.awssdk.http.IdleConnectionReaper;
+import software.amazon.awssdk.http.SystemPropertyTlsKeyManagersProvider;
+import software.amazon.awssdk.http.conn.ssl.SdkTLSSocketFactory;
+import software.amazon.awssdk.internal.SdkSSLContext;
+import software.amazon.awssdk.services.s3.AmazonS3;
+import software.amazon.awssdk.services.s3.AmazonS3ClientBuilder;
+import software.amazon.awssdk.services.s3.internal.Constants;
+import software.amazon.awssdk.services.securitytoken.AWSSecurityTokenService;
+import software.amazon.awssdk.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
 
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;

@@ -47,9 +47,11 @@ opensearchplugin {
 
 dependencies {
   api "software.amazon.awssdk:s3:${versions.aws}"
-  api "software.amazon.awssdk:core:${versions.aws}"
+  api "software.amazon.awssdk:sdk-core:${versions.aws}"
   api "software.amazon.awssdk:sts:${versions.aws}"
-  api "software.amazon.awssdk:codegen:${versions.aws}"
+  api "software.amazon.awssdk:auth:${versions.aws}"
+  // TODO
+//  api "com.amazonaws:jmespath-java:${versions.aws}"
   api "org.apache.httpcomponents:httpclient:${versions.httpclient}"
   api "org.apache.httpcomponents:httpcore:${versions.httpcore}"
   api "commons-logging:commons-logging:${versions.commonslogging}"

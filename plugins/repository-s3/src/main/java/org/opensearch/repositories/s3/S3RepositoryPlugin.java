@@ -32,7 +32,7 @@
 
 package org.opensearch.repositories.s3;
 
-import com.amazonaws.util.json.Jackson;
+import software.amazon.awssdk.util.json.Jackson;
 import org.opensearch.SpecialPermission;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.cluster.service.ClusterService;
