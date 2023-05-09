@@ -32,8 +32,8 @@
 
 package org.opensearch.repositories.s3;
 
+import org.opensearch.repositories.s3.utils.Protocol;
 import software.amazon.awssdk.ClientConfiguration;
-import software.amazon.awssdk.Protocol;
 import software.amazon.awssdk.services.s3.AmazonS3Client;
 
 import org.opensearch.common.settings.MockSecureSettings;

@@ -8,9 +8,9 @@
 
 package org.opensearch.repositories.s3;
 
-import software.amazon.awssdk.Protocol;
 import org.opensearch.common.Strings;
 import org.opensearch.common.settings.SettingsException;
+import org.opensearch.repositories.s3.utils.Protocol;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
