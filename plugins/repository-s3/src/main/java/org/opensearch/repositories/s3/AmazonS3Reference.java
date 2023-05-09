@@ -33,7 +33,6 @@
 package org.opensearch.repositories.s3;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.services.s3.AmazonS3;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import org.opensearch.common.Nullable;
@@ -46,8 +45,8 @@ import java.io.IOException;
  * Handles the shutdown of the wrapped {@link S3Client} using reference
  * counting.
  */
-public class AmazonS3Reference extends RefCountedReleasable<AmazonS3> {
-    AmazonS3Reference(AmazonS3 client) {
+public class AmazonS3Reference extends RefCountedReleasable<S3Client> {
+    AmazonS3Reference(S3Client client) {
         this(client, null);
     }
 
@@ -55,9 +54,9 @@ public class AmazonS3Reference extends RefCountedReleasable<AmazonS3> {
         this(client.client(), client.credentials());
     }
 
-    AmazonS3Reference(AmazonS3 client, @Nullable AwsCredentialsProvider credentials) {
+    AmazonS3Reference(S3Client client, @Nullable AwsCredentialsProvider credentials) {
         super("AWS_S3_CLIENT", client, () -> {
-            client.shutdown();
+            client.close();
             if (credentials instanceof Closeable) {
                 try {
                     ((Closeable) credentials).close();
