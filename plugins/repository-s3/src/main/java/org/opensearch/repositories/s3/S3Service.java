@@ -50,6 +50,10 @@ import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvide
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
+import software.amazon.awssdk.core.interceptor.Context;
+import software.amazon.awssdk.core.interceptor.ExecutionAttributes;
+import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.http.SdkHttpClient;
@@ -251,18 +255,7 @@ class S3Service implements Closeable {
                     clientBuilder.socketFactory(createSocksSslConnectionSocketFactory(clientSettings.proxySettings.getAddress()));
                 });
             } else {
-                ProxyConfiguration.Builder proxyConfiguration = ProxyConfiguration.builder();
-                if (clientSettings.proxySettings.getType() != ProxySettings.ProxyType.DIRECT) {
-                    // TODO how to set proxy protocol?
-                    // clientConfiguration.setProxyProtocol(clientSettings.proxySettings.getType().toProtocol());
-                }
-                // TODO check if this is the same as setting the host and port separately
-                proxyConfiguration.endpoint(URI.create(clientSettings.proxySettings.getAddress().toString()));
-                proxyConfiguration.username(clientSettings.proxySettings.getUsername());
-                proxyConfiguration.password(clientSettings.proxySettings.getPassword());
-                // clientConfiguration.setProxyHost(clientSettings.proxySettings.getHostName());
-                // clientConfiguration.setProxyPort(clientSettings.proxySettings.getPort());
-                clientBuilder.proxyConfiguration(proxyConfiguration.build());
+                clientBuilder.proxyConfiguration(buildHttpProxyConfiguration(clientSettings));
             }
         }
 
@@ -271,12 +264,38 @@ class S3Service implements Closeable {
         return clientBuilder.build();
     }
 
+    static ProxyConfiguration buildHttpProxyConfiguration(S3ClientSettings clientSettings) {
+        ProxyConfiguration.Builder proxyConfiguration = ProxyConfiguration.builder();
+        if (clientSettings.proxySettings.getType() != ProxySettings.ProxyType.DIRECT) {
+            // TODO how to set proxy protocol?
+            // clientConfiguration.setProxyProtocol(clientSettings.proxySettings.getType().toProtocol());
+        }
+        // TODO check if this is the same as setting the host and port separately
+        proxyConfiguration.endpoint(URI.create(clientSettings.proxySettings.getAddress().toString()));
+        proxyConfiguration.username(clientSettings.proxySettings.getUsername());
+        proxyConfiguration.password(clientSettings.proxySettings.getPassword());
+        // clientConfiguration.setProxyHost(clientSettings.proxySettings.getHostName());
+        // clientConfiguration.setProxyPort(clientSettings.proxySettings.getPort());
+
+        return proxyConfiguration.build();
+    }
+
     static ClientOverrideConfiguration buildOverrideConfiguration(final S3ClientSettings clientSettings) {
         ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder();
+        // TODO using this we should be able to register a request interceptor that will record metrics
+        // TODO also check if we can do this using MetricsPublishers
+//        clientOverrideConfiguration.addExecutionInterceptor(new ExecutionInterceptor() {
+//            @Override
+//            public void beforeTransmission(Context.BeforeTransmission context, ExecutionAttributes executionAttributes) {
+//                context.httpRequest().method()
+//                ExecutionInterceptor.super.beforeTransmission(context, executionAttributes);
+//            }
+//        });
         if (Strings.hasLength(clientSettings.signerOverride)) {
             // TODO need to check how signer override can be provided
-            // clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER,
-            // clientSettings.signerOverride)
+//            clientConfiguration.setSignerOverride(clientSettings.signerOverride);
+//             clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER,
+//             clientSettings.signerOverride);
         }
         RetryPolicy.Builder retryPolicy = RetryPolicy.builder().numRetries(clientSettings.maxRetries);
         if (clientSettings.throttleRetries) {

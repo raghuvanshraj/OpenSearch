@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Wrapper around an S3 object that will retry the {@link GetObjectRequest} if the download fails part-way through, resuming from where
@@ -68,6 +69,7 @@ class S3RetryingInputStream extends InputStream {
     private final List<IOException> failures;
 
     private ResponseInputStream<GetObjectResponse> currentStream;
+    private AtomicBoolean isStreamAborted;
     private long currentStreamLastOffset;
     private int attempt = 1;
     private long currentOffset;
@@ -115,6 +117,7 @@ class S3RetryingInputStream extends InputStream {
                 getStreamLength(getObjectResponseInputStream.response())
             );
             this.currentStream = getObjectResponseInputStream;
+            this.isStreamAborted.set(false);
         } catch (final SdkException e) {
             if (e instanceof S3Exception) {
                 if (404 == ((S3Exception) e).statusCode()) {
@@ -253,6 +256,7 @@ class S3RetryingInputStream extends InputStream {
         try {
             if (range.getStart() + currentOffset < currentStreamLastOffset) {
                 stream.abort();
+                isStreamAborted.compareAndSet(false, true);
             }
         } catch (Exception e) {
             logger.warn("Failed to abort stream before closing", e);
@@ -283,10 +287,7 @@ class S3RetryingInputStream extends InputStream {
 
     // package-private for tests
     // TODO this is not used in production code, need to see how it is used in tests
-    // boolean isAborted() {
-    // if (currentStream == null || currentStream.response() == null) {
-    // return false;
-    // }
-    // return currentStream.getHttpRequest().isAborted();
-    // }
+    boolean isAborted() {
+        return isStreamAborted.get();
+    }
 }

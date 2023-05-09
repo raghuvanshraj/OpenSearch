@@ -32,14 +32,13 @@
 
 package org.opensearch.repositories.s3;
 
-import software.amazon.awssdk.services.s3.AmazonS3;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Object;
-import software.amazon.awssdk.services.s3.model.S3ObjectInputStream;
-import org.apache.http.client.methods.HttpGet;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.io.Streams;
 import org.opensearch.test.OpenSearchTestCase;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -105,21 +104,22 @@ public class S3RetryingInputStreamTests extends OpenSearchTestCase {
 
     private S3RetryingInputStream createInputStream(final byte[] data, @Nullable final Integer position, @Nullable final Integer length)
         throws IOException {
-        final S3Object s3Object = new S3Object();
-        final AmazonS3 client = mock(AmazonS3.class);
-        when(client.getObject(any(GetObjectRequest.class))).thenReturn(s3Object);
+//        final S3Object s3Object = new S3Object();
+        final S3Client client = mock(S3Client.class);
+        when(client.getObject(any(GetObjectRequest.class))).thenReturn(new ResponseInputStream<>(
+            GetObjectResponse.builder()
+                .contentLength(Long.valueOf(length))
+            .build(),
+            new ByteArrayInputStream(data))
+        );
         final AmazonS3Reference clientReference = mock(AmazonS3Reference.class);
         when(clientReference.get()).thenReturn(client);
         final S3BlobStore blobStore = mock(S3BlobStore.class);
         when(blobStore.clientReference()).thenReturn(clientReference);
 
         if (position != null && length != null) {
-            s3Object.getObjectMetadata().setContentLength(length);
-            s3Object.setObjectContent(new S3ObjectInputStream(new ByteArrayInputStream(data, position, length), new HttpGet()));
             return new S3RetryingInputStream(blobStore, "_blob", position, Math.addExact(position, length - 1));
         } else {
-            s3Object.getObjectMetadata().setContentLength(data.length);
-            s3Object.setObjectContent(new S3ObjectInputStream(new ByteArrayInputStream(data), new HttpGet()));
             return new S3RetryingInputStream(blobStore, "_blob");
         }
     }

@@ -31,10 +31,9 @@
 
 package org.opensearch.repositories.s3;
 
-import software.amazon.awssdk.SdkClientException;
-import software.amazon.awssdk.services.s3.internal.MD5DigestCalculatingInputStream;
-import software.amazon.awssdk.util.Base16;
 import org.apache.http.HttpStatus;
+import org.junit.After;
+import org.junit.Before;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.SuppressForbidden;
@@ -53,8 +52,9 @@ import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.concurrent.CountDown;
 import org.opensearch.common.util.io.IOUtils;
 import org.opensearch.repositories.blobstore.AbstractBlobContainerRetriesTestCase;
-import org.junit.After;
-import org.junit.Before;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.utils.Md5Utils;
+import software.amazon.awssdk.utils.internal.Base16;
 
 import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
@@ -67,15 +67,15 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.opensearch.repositories.s3.S3ClientSettings.DISABLE_CHUNKED_ENCODING;
-import static org.opensearch.repositories.s3.S3ClientSettings.ENDPOINT_SETTING;
-import static org.opensearch.repositories.s3.S3ClientSettings.MAX_RETRIES_SETTING;
-import static org.opensearch.repositories.s3.S3ClientSettings.READ_TIMEOUT_SETTING;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.opensearch.repositories.s3.S3ClientSettings.DISABLE_CHUNKED_ENCODING;
+import static org.opensearch.repositories.s3.S3ClientSettings.ENDPOINT_SETTING;
+import static org.opensearch.repositories.s3.S3ClientSettings.MAX_RETRIES_SETTING;
+import static org.opensearch.repositories.s3.S3ClientSettings.READ_TIMEOUT_SETTING;
 
 /**
  * This class tests how a {@link S3BlobContainer} and its underlying AWS S3 client are retrying requests when reading or writing blobs.
@@ -287,13 +287,13 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
                 && exchange.getRequestURI().getQuery().contains("uploadId=TEST")
                 && exchange.getRequestURI().getQuery().contains("partNumber=")) {
                     // upload part request
-                    MD5DigestCalculatingInputStream md5 = new MD5DigestCalculatingInputStream(exchange.getRequestBody());
-                    BytesReference bytes = Streams.readFully(md5);
-                    assertThat((long) bytes.length(), anyOf(equalTo(lastPartSize), equalTo(bufferSize.getBytes())));
+                // TODO need to verify assertions here
+                    byte[] md5 = Md5Utils.computeMD5Hash(exchange.getRequestBody());
+                    assertThat((long) md5.length, anyOf(equalTo(lastPartSize), equalTo(bufferSize.getBytes())));
                     assertThat(contentLength, anyOf(equalTo(lastPartSize), equalTo(bufferSize.getBytes())));
 
                     if (countDownUploads.decrementAndGet() % 2 == 0) {
-                        exchange.getResponseHeaders().add("ETag", Base16.encodeAsString(md5.getMd5Digest()));
+                        exchange.getResponseHeaders().add("ETag", Base16.encodeAsString(md5));
                         exchange.sendResponseHeaders(HttpStatus.SC_OK, -1);
                         exchange.close();
                         return;
