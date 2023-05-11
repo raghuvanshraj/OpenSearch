@@ -32,7 +32,6 @@
 
 package org.opensearch.repositories.s3;
 
-import software.amazon.awssdk.util.json.Jackson;
 import org.opensearch.SpecialPermission;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.cluster.service.ClusterService;
@@ -64,15 +63,17 @@ public class S3RepositoryPlugin extends Plugin implements RepositoryPlugin, Relo
     static {
         SpecialPermission.check();
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-            try {
-                // kick jackson to do some static caching of declared members info
-                Jackson.jsonNodeOf("{}");
-                // ClientConfiguration clinit has some classloader problems
-                // TODO: fix that
-                Class.forName("com.amazonaws.ClientConfiguration");
-            } catch (final ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
+            // TODO ClientConfiguration is not there in v2 SDK, need to revisit this bit
+            // try {
+            // // kick jackson to do some static caching of declared members info
+            // // TODO
+            //// Jackson.jsonNodeOf("{}");
+            // // ClientConfiguration clinit has some classloader problems
+            // // TODO: fix that
+            //// Class.forName("com.amazonaws.ClientConfiguration");
+            // } catch (final ClassNotFoundException e) {
+            // throw new RuntimeException(e);
+            // }
             return null;
         });
     }

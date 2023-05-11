@@ -32,12 +32,13 @@
 
 package org.opensearch.repositories.s3;
 
-import software.amazon.awssdk.Request;
-import software.amazon.awssdk.Response;
-import software.amazon.awssdk.metrics.RequestMetricCollector;
-import software.amazon.awssdk.services.s3.model.CannedAccessControlList;
+//import software.amazon.awssdk.Request;
+//import software.amazon.awssdk.Response;
+//import software.amazon.awssdk.metrics.RequestMetricCollector;
+//import software.amazon.awssdk.services.s3.model.CannedAccessControlList;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.StorageClass;
-import software.amazon.awssdk.util.AWSRequestMetrics;
+//import software.amazon.awssdk.util.AWSRequestMetrics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
@@ -65,7 +66,7 @@ class S3BlobStore implements BlobStore {
 
     private final boolean serverSideEncryption;
 
-    private final CannedAccessControlList cannedACL;
+    private final ObjectCannedACL cannedACL;
 
     private final StorageClass storageClass;
 
@@ -73,10 +74,10 @@ class S3BlobStore implements BlobStore {
 
     private final Stats stats = new Stats();
 
-    final RequestMetricCollector getMetricCollector;
-    final RequestMetricCollector listMetricCollector;
-    final RequestMetricCollector putMetricCollector;
-    final RequestMetricCollector multiPartUploadMetricCollector;
+    // final RequestMetricCollector getMetricCollector;
+    // final RequestMetricCollector listMetricCollector;
+    // final RequestMetricCollector putMetricCollector;
+    // final RequestMetricCollector multiPartUploadMetricCollector;
 
     S3BlobStore(
         S3Service service,
@@ -94,44 +95,44 @@ class S3BlobStore implements BlobStore {
         this.cannedACL = initCannedACL(cannedACL);
         this.storageClass = initStorageClass(storageClass);
         this.repositoryMetadata = repositoryMetadata;
-        this.getMetricCollector = new RequestMetricCollector() {
-            @Override
-            public void collectMetrics(Request<?> request, Response<?> response) {
-                assert request.getHttpMethod().name().equals("GET");
-                stats.getCount.addAndGet(getRequestCount(request));
-            }
-        };
-        this.listMetricCollector = new RequestMetricCollector() {
-            @Override
-            public void collectMetrics(Request<?> request, Response<?> response) {
-                assert request.getHttpMethod().name().equals("GET");
-                stats.listCount.addAndGet(getRequestCount(request));
-            }
-        };
-        this.putMetricCollector = new RequestMetricCollector() {
-            @Override
-            public void collectMetrics(Request<?> request, Response<?> response) {
-                assert request.getHttpMethod().name().equals("PUT");
-                stats.putCount.addAndGet(getRequestCount(request));
-            }
-        };
-        this.multiPartUploadMetricCollector = new RequestMetricCollector() {
-            @Override
-            public void collectMetrics(Request<?> request, Response<?> response) {
-                assert request.getHttpMethod().name().equals("PUT") || request.getHttpMethod().name().equals("POST");
-                stats.postCount.addAndGet(getRequestCount(request));
-            }
-        };
+        // this.getMetricCollector = new RequestMetricCollector() {
+        // @Override
+        // public void collectMetrics(Request<?> request, Response<?> response) {
+        // assert request.getHttpMethod().name().equals("GET");
+        // stats.getCount.addAndGet(getRequestCount(request));
+        // }
+        // };
+        // this.listMetricCollector = new RequestMetricCollector() {
+        // @Override
+        // public void collectMetrics(Request<?> request, Response<?> response) {
+        // assert request.getHttpMethod().name().equals("GET");
+        // stats.listCount.addAndGet(getRequestCount(request));
+        // }
+        // };
+        // this.putMetricCollector = new RequestMetricCollector() {
+        // @Override
+        // public void collectMetrics(Request<?> request, Response<?> response) {
+        // assert request.getHttpMethod().name().equals("PUT");
+        // stats.putCount.addAndGet(getRequestCount(request));
+        // }
+        // };
+        // this.multiPartUploadMetricCollector = new RequestMetricCollector() {
+        // @Override
+        // public void collectMetrics(Request<?> request, Response<?> response) {
+        // assert request.getHttpMethod().name().equals("PUT") || request.getHttpMethod().name().equals("POST");
+        // stats.postCount.addAndGet(getRequestCount(request));
+        // }
+        // };
     }
 
-    private long getRequestCount(Request<?> request) {
-        Number requestCount = request.getAWSRequestMetrics().getTimingInfo().getCounter(AWSRequestMetrics.Field.RequestCount.name());
-        if (requestCount == null) {
-            logger.warn("Expected request count to be tracked for request [{}] but found not count.", request);
-            return 0L;
-        }
-        return requestCount.longValue();
-    }
+    // private long getRequestCount(Request<?> request) {
+    // Number requestCount = request.getAWSRequestMetrics().getTimingInfo().getCounter(AWSRequestMetrics.Field.RequestCount.name());
+    // if (requestCount == null) {
+    // logger.warn("Expected request count to be tracked for request [{}] but found not count.", request);
+    // return 0L;
+    // }
+    // return requestCount.longValue();
+    // }
 
     @Override
     public String toString() {
@@ -173,7 +174,7 @@ class S3BlobStore implements BlobStore {
         return stats.toMap();
     }
 
-    public CannedAccessControlList getCannedACL() {
+    public ObjectCannedACL getCannedACL() {
         return cannedACL;
     }
 
@@ -183,30 +184,30 @@ class S3BlobStore implements BlobStore {
 
     public static StorageClass initStorageClass(String storageClass) {
         if ((storageClass == null) || storageClass.equals("")) {
-            return StorageClass.Standard;
+            return StorageClass.STANDARD;
         }
 
-        try {
-            final StorageClass _storageClass = StorageClass.fromValue(storageClass.toUpperCase(Locale.ENGLISH));
-            if (_storageClass.equals(StorageClass.Glacier)) {
-                throw new BlobStoreException("Glacier storage class is not supported");
-            }
+        final StorageClass _storageClass = StorageClass.fromValue(storageClass.toUpperCase(Locale.ENGLISH));
+        if (_storageClass.equals(StorageClass.GLACIER)) {
+            throw new BlobStoreException("Glacier storage class is not supported");
+        }
 
-            return _storageClass;
-        } catch (final IllegalArgumentException illegalArgumentException) {
+        if (_storageClass == StorageClass.UNKNOWN_TO_SDK_VERSION) {
             throw new BlobStoreException("`" + storageClass + "` is not a valid S3 Storage Class.");
         }
+
+        return _storageClass;
     }
 
     /**
      * Constructs canned acl from string
      */
-    public static CannedAccessControlList initCannedACL(String cannedACL) {
+    public static ObjectCannedACL initCannedACL(String cannedACL) {
         if ((cannedACL == null) || cannedACL.equals("")) {
-            return CannedAccessControlList.Private;
+            return ObjectCannedACL.PRIVATE;
         }
 
-        for (final CannedAccessControlList cur : CannedAccessControlList.values()) {
+        for (final ObjectCannedACL cur : ObjectCannedACL.values()) {
             if (cur.toString().equalsIgnoreCase(cannedACL)) {
                 return cur;
             }
