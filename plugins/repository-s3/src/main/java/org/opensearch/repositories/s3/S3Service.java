@@ -48,6 +48,7 @@ import org.opensearch.repositories.s3.utils.Protocol;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ContainerCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.SdkSystemSetting;
@@ -358,27 +359,23 @@ class S3Service implements Closeable {
         if (irsaCredentials != null) {
             logger.debug("Using IRSA credentials");
 
-            StsClient stsClient = null;
-            final String region = Strings.hasLength(clientSettings.region) ? clientSettings.region : null;
+            final Region region = Region.of(clientSettings.region);
+            StsClient stsClient = SocketAccess.doPrivileged(() -> {
+                StsClientBuilder builder = StsClient.builder().region(region);
 
-            if (region != null || basicCredentials != null) {
-                stsClient = SocketAccess.doPrivileged(() -> {
-                    StsClientBuilder builder = StsClient.builder();
+                final String stsEndpoint = System.getProperty(STS_ENDPOINT_OVERRIDE_SYSTEM_PROPERTY);
+                if (stsEndpoint != null) {
+                    builder = builder.endpointOverride(URI.create(stsEndpoint));
+                }
 
-                    // Use similar approach to override STS endpoint as SDKGlobalConfiguration.EC2_METADATA_SERVICE_OVERRIDE_SYSTEM_PROPERTY
-                    final String stsEndpoint = System.getProperty(STS_ENDPOINT_OVERRIDE_SYSTEM_PROPERTY);
-                    if (region != null && stsEndpoint != null) {
-                        builder = builder.endpointOverride(URI.create(stsEndpoint));
-                        builder = builder.region(Region.of(region));
-                    }
+                if (basicCredentials != null) {
+                    builder = builder.credentialsProvider(StaticCredentialsProvider.create(basicCredentials));
+                } else {
+                    builder = builder.credentialsProvider(DefaultCredentialsProvider.create());
+                }
 
-                    if (basicCredentials != null) {
-                        builder = builder.credentialsProvider(StaticCredentialsProvider.create(basicCredentials));
-                    }
-
-                    return builder.build();
-                });
-            }
+                return builder.build();
+            });
 
             if (irsaCredentials.getIdentityTokenFile() == null) {
                 final StsAssumeRoleCredentialsProvider.Builder stsCredentialsProviderBuilder = StsAssumeRoleCredentialsProvider.builder()
@@ -403,8 +400,7 @@ class S3Service implements Closeable {
                             AssumeRoleWithWebIdentityRequest.builder()
                                 .roleArn(irsaCredentials.getRoleArn())
                                 .roleSessionName(irsaCredentials.getRoleSessionName())
-                                // TODO need to see if there is a difference between the token (that is needed here) and the token file
-                                // (which is being passed)
+                                // TODO need to see if there is a difference between the token (that is needed here) and the token file (which is being passed)
                                 .webIdentityToken(irsaCredentials.getIdentityTokenFile())
                                 .build()
                         );
