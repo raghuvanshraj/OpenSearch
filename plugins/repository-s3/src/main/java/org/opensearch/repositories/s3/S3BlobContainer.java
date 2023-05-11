@@ -363,21 +363,20 @@ class S3BlobContainer extends AbstractBlobContainer {
         // md.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
         // }
         // TODO need to see how we can specify metric collector
-        PutObjectRequest putRequest = PutObjectRequest.builder()
+        PutObjectRequest.Builder putObjectRequest = PutObjectRequest.builder()
             .bucket(blobStore.bucket())
             .key(blobName)
             .contentLength(blobSize)
             .storageClass(blobStore.getStorageClass())
-            .acl(blobStore.getCannedACL())
-            // TODO see if this is the right way
-            .sseCustomerAlgorithm(ServerSideEncryption.AES256.toString())
-            .build();
-        // final PutObjectRequest putRequest = new PutObjectRequest(blobStore.bucket(), blobName, input, md);
+            .acl(blobStore.getCannedACL());
+        if (blobStore.serverSideEncryption()) {
+            putObjectRequest.sseCustomerAlgorithm(ServerSideEncryption.AES256.toString());
+        }
         // putRequest.setRequestMetricCollector(blobStore.putMetricCollector);
 
         try (AmazonS3Reference clientReference = blobStore.clientReference()) {
             SocketAccess.doPrivilegedVoid(
-                () -> { clientReference.get().putObject(putRequest, RequestBody.fromInputStream(input, blobSize)); }
+                () -> { clientReference.get().putObject(putObjectRequest.build(), RequestBody.fromInputStream(input, blobSize)); }
             );
         } catch (final SdkException e) {
             throw new IOException("Unable to upload object [" + blobName + "] using a single upload", e);
@@ -406,17 +405,19 @@ class S3BlobContainer extends AbstractBlobContainer {
         final String bucketName = blobStore.bucket();
         boolean success = false;
 
-        CreateMultipartUploadRequest initRequest = CreateMultipartUploadRequest.builder()
+        CreateMultipartUploadRequest.Builder createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
             .bucket(bucketName)
             .key(blobName)
             .storageClass(blobStore.getStorageClass())
-            .acl(blobStore.getCannedACL())
-            .sseCustomerAlgorithm(blobStore.serverSideEncryption() ? ServerSideEncryption.AES256.toString() : null)
-            .build();
+            .acl(blobStore.getCannedACL());
+
+        if (blobStore.serverSideEncryption()) {
+            createMultipartUploadRequest.sseCustomerAlgorithm(ServerSideEncryption.AES256.toString());
+        }
 
         try (AmazonS3Reference clientReference = blobStore.clientReference()) {
 
-            uploadId.set(SocketAccess.doPrivileged(() -> clientReference.get().createMultipartUpload(initRequest).uploadId()));
+            uploadId.set(SocketAccess.doPrivileged(() -> clientReference.get().createMultipartUpload(createMultipartUploadRequest.build()).uploadId()));
             if (Strings.isEmpty(uploadId.get())) {
                 throw new IOException("Failed to initialize multipart upload " + blobName);
             }
@@ -425,7 +426,7 @@ class S3BlobContainer extends AbstractBlobContainer {
 
             long bytesCount = 0;
             for (int i = 1; i <= nbParts; i++) {
-                final UploadPartRequest uploadRequest = UploadPartRequest.builder()
+                final UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
                     .bucket(bucketName)
                     .key(blobName)
                     .uploadId(uploadId.get())
@@ -433,12 +434,12 @@ class S3BlobContainer extends AbstractBlobContainer {
                     .contentLength((i < nbParts) ? partSize : lastPartSize)
                     .build();
 
-                bytesCount += uploadRequest.contentLength();
+                bytesCount += uploadPartRequest.contentLength();
 
                 final UploadPartResponse uploadResponse = SocketAccess.doPrivileged(
-                    () -> clientReference.get().uploadPart(uploadRequest, RequestBody.fromInputStream(input, uploadRequest.contentLength()))
+                    () -> clientReference.get().uploadPart(uploadPartRequest, RequestBody.fromInputStream(input, uploadPartRequest.contentLength()))
                 );
-                parts.add(CompletedPart.builder().partNumber(uploadRequest.partNumber()).eTag(uploadResponse.eTag()).build());
+                parts.add(CompletedPart.builder().partNumber(uploadPartRequest.partNumber()).eTag(uploadResponse.eTag()).build());
             }
 
             if (bytesCount != blobSize) {

@@ -32,6 +32,7 @@
 
 package org.opensearch.repositories.s3;
 
+import org.junit.Before;
 import org.opensearch.common.settings.MockSecureSettings;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.settings.SettingsException;
@@ -51,6 +52,14 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 
 public class S3ClientSettingsTests extends OpenSearchTestCase implements ConfigPathSupport {
+    @Override
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+
+        SocketAccess.doPrivileged(() -> System.setProperty("opensearch.path.conf", configPath().toString()));
+    }
+
     public void testThereIsADefaultClientByDefault() {
         final Map<String, S3ClientSettings> settings = S3ClientSettings.load(Settings.EMPTY, configPath());
         assertThat(settings.keySet(), contains("default"));
@@ -282,7 +291,7 @@ public class S3ClientSettingsTests extends OpenSearchTestCase implements ConfigP
         assertThat(settings.get("other").region, is(region));
         try (
             S3Service s3Service = new S3Service(configPath());
-            S3Client other = s3Service.buildClient(settings.get("other")).client()
+            S3Client other = SocketAccess.doPrivileged(() -> s3Service.buildClient(settings.get("other")).client());
         ) {
             // TODO signer override setting in prod code and relevant testing is pending
 //            assertThat(other.getSignerRegionOverride(), is(region));

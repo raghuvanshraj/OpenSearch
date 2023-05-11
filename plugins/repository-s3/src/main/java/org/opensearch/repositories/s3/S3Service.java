@@ -40,9 +40,11 @@ import org.apache.logging.log4j.Logger;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.Strings;
+import org.opensearch.common.SuppressForbidden;
 import org.opensearch.common.collect.MapBuilder;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.repositories.s3.S3ClientSettings.IrsaCredentials;
+import org.opensearch.repositories.s3.utils.Protocol;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ContainerCredentialsProvider;
@@ -50,20 +52,17 @@ import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvide
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
-import software.amazon.awssdk.core.interceptor.Context;
-import software.amazon.awssdk.core.interceptor.ExecutionAttributes;
-import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
-import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.SystemPropertyTlsKeyManagersProvider;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
 import software.amazon.awssdk.http.apache.internal.conn.SdkTlsSocketFactory;
+import software.amazon.awssdk.profiles.ProfileFileSystemSetting;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
@@ -80,6 +79,7 @@ import java.net.PasswordAuthentication;
 import java.net.Proxy;
 import java.net.Socket;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -192,11 +192,12 @@ class S3Service implements Closeable {
 
     // proxy for testing
     AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings) {
+        setDefaultAwsProfilePath();
         final S3ClientBuilder builder = S3Client.builder();
 
         final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
         builder.credentialsProvider(credentials);
-        builder.httpClient(buildHttpClient(clientSettings));
+        builder.httpClientBuilder(buildHttpClient(clientSettings));
         builder.overrideConfiguration(buildOverrideConfiguration(clientSettings));
 
         String endpoint = Strings.hasLength(clientSettings.endpoint) ? clientSettings.endpoint : DEFAULT_S3_ENDPOINT;
@@ -220,15 +221,26 @@ class S3Service implements Closeable {
         if (clientSettings.pathStyleAccess) {
             builder.forcePathStyle(true);
         }
-        // TODO not supported in v2?
-        // if (clientSettings.disableChunkedEncoding) {
-        // builder.disableChunkedEncoding();
-        // }
+        if (clientSettings.disableChunkedEncoding) {
+            builder.serviceConfiguration(s -> s.chunkedEncodingEnabled(false));
+        }
         final S3Client client = SocketAccess.doPrivileged(builder::build);
         return AmazonS3WithCredentials.create(client, credentials);
     }
 
-    static SdkHttpClient buildHttpClient(S3ClientSettings clientSettings) {
+    // Aws v2 sdk tries to load a default profile from home path which is restricted. Hence, setting these to random
+    // valid paths.
+    @SuppressForbidden(reason = "Need to provide this override to v2 SDK so that path does not default to home path")
+    static void setDefaultAwsProfilePath() {
+        if (ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.getStringValue().isEmpty()) {
+            System.setProperty(ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(), System.getProperty("opensearch.path.conf"));
+        }
+        if (ProfileFileSystemSetting.AWS_CONFIG_FILE.getStringValue().isEmpty()) {
+            System.setProperty(ProfileFileSystemSetting.AWS_CONFIG_FILE.property(), System.getProperty("opensearch.path.conf"));
+        }
+    }
+
+    static ApacheHttpClient.Builder buildHttpClient(S3ClientSettings clientSettings) {
         ApacheHttpClient.Builder clientBuilder = ApacheHttpClient.builder();
 
         // the response metadata cache is only there for diagnostics purposes,
@@ -238,7 +250,7 @@ class S3Service implements Closeable {
         // TODO need to set an http: endpoint explicitly, https is default
         // clientConfiguration.setProtocol(clientSettings.protocol);
 
-        if (clientSettings.proxySettings != ProxySettings.NO_PROXY_SETTINGS) {
+        if (!clientSettings.proxySettings.equals(ProxySettings.NO_PROXY_SETTINGS)) {
             if (clientSettings.proxySettings.getType() == ProxySettings.ProxyType.SOCKS) {
                 SocketAccess.doPrivilegedVoid(() -> {
                     if (clientSettings.proxySettings.isAuthenticated()) {
@@ -261,7 +273,7 @@ class S3Service implements Closeable {
 
         clientBuilder.socketTimeout(Duration.ofMillis(clientSettings.readTimeoutMillis));
 
-        return clientBuilder.build();
+        return clientBuilder;
     }
 
     static ProxyConfiguration buildHttpProxyConfiguration(S3ClientSettings clientSettings) {
@@ -271,9 +283,23 @@ class S3Service implements Closeable {
             // clientConfiguration.setProxyProtocol(clientSettings.proxySettings.getType().toProtocol());
         }
         // TODO check if this is the same as setting the host and port separately
-        proxyConfiguration.endpoint(URI.create(clientSettings.proxySettings.getAddress().toString()));
-        proxyConfiguration.username(clientSettings.proxySettings.getUsername());
-        proxyConfiguration.password(clientSettings.proxySettings.getPassword());
+        Protocol proxyProtocol = clientSettings.proxySettings.getType() == ProxySettings.ProxyType.DIRECT ? Protocol.HTTP : clientSettings.proxySettings.getType().toProtocol();
+        try {
+            proxyConfiguration = proxyConfiguration.endpoint(new URI(
+                proxyProtocol.toString(),
+                null,
+                clientSettings.proxySettings.getHost(),
+                clientSettings.proxySettings.getPort(),
+                null,
+                null,
+                null
+            ));
+        } catch (URISyntaxException e) {
+            // TODO handle this
+            throw new RuntimeException(e);
+        }
+        proxyConfiguration = proxyConfiguration.username(clientSettings.proxySettings.getUsername());
+        proxyConfiguration = proxyConfiguration.password(clientSettings.proxySettings.getPassword());
         // clientConfiguration.setProxyHost(clientSettings.proxySettings.getHostName());
         // clientConfiguration.setProxyPort(clientSettings.proxySettings.getPort());
 
@@ -298,8 +324,8 @@ class S3Service implements Closeable {
 //             clientSettings.signerOverride);
         }
         RetryPolicy.Builder retryPolicy = RetryPolicy.builder().numRetries(clientSettings.maxRetries);
-        if (clientSettings.throttleRetries) {
-            retryPolicy = retryPolicy.throttlingBackoffStrategy(BackoffStrategy.defaultThrottlingStrategy());
+        if (!clientSettings.throttleRetries) {
+            retryPolicy = retryPolicy.throttlingBackoffStrategy(BackoffStrategy.none());
         }
         return clientOverrideConfiguration.retryPolicy(retryPolicy.build()).build();
     }

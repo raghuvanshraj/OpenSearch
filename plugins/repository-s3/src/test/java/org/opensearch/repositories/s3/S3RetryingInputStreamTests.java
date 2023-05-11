@@ -34,6 +34,7 @@ package org.opensearch.repositories.s3;
 
 import org.opensearch.common.Nullable;
 import org.opensearch.common.io.Streams;
+import org.opensearch.repositories.s3.utils.Range;
 import org.opensearch.test.OpenSearchTestCase;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -54,7 +55,7 @@ public class S3RetryingInputStreamTests extends OpenSearchTestCase {
     public void testInputStreamFullyConsumed() throws IOException {
         final byte[] expectedBytes = randomByteArrayOfLength(randomIntBetween(1, 512));
 
-        final S3RetryingInputStream stream = createInputStream(expectedBytes, null, null);
+        final S3RetryingInputStream stream = createInputStream(expectedBytes, 0L, (long) (Integer.MAX_VALUE - 1));
         Streams.consumeFully(stream);
 
         assertThat(stream.isEof(), is(true));
@@ -65,7 +66,7 @@ public class S3RetryingInputStreamTests extends OpenSearchTestCase {
         final byte[] expectedBytes = randomByteArrayOfLength(randomIntBetween(10, 512));
         final byte[] actualBytes = new byte[randomIntBetween(1, Math.max(1, expectedBytes.length - 1))];
 
-        final S3RetryingInputStream stream = createInputStream(expectedBytes, null, null);
+        final S3RetryingInputStream stream = createInputStream(expectedBytes, 0L, (long) (Integer.MAX_VALUE - 1));
         stream.read(actualBytes);
         stream.close();
 
@@ -76,8 +77,8 @@ public class S3RetryingInputStreamTests extends OpenSearchTestCase {
 
     public void testRangeInputStreamFullyConsumed() throws IOException {
         final byte[] bytes = randomByteArrayOfLength(randomIntBetween(1, 512));
-        final int position = randomIntBetween(0, bytes.length - 1);
-        final int length = randomIntBetween(1, bytes.length - position);
+        final long position = randomLongBetween(0, bytes.length - 1);
+        final long length = randomLongBetween(1, bytes.length - position);
 
         final S3RetryingInputStream stream = createInputStream(bytes, position, length);
         Streams.consumeFully(stream);
@@ -90,37 +91,34 @@ public class S3RetryingInputStreamTests extends OpenSearchTestCase {
         final byte[] expectedBytes = randomByteArrayOfLength(randomIntBetween(10, 512));
         final byte[] actualBytes = new byte[randomIntBetween(1, Math.max(1, expectedBytes.length - 1))];
 
-        final int length = randomIntBetween(actualBytes.length + 1, expectedBytes.length);
-        final int position = randomIntBetween(0, Math.max(1, expectedBytes.length - length));
+        final long length = randomLongBetween(actualBytes.length + 1, expectedBytes.length);
+        final long position = randomLongBetween(0L, Math.max(1, expectedBytes.length - length));
 
         final S3RetryingInputStream stream = createInputStream(expectedBytes, position, length);
         stream.read(actualBytes);
         stream.close();
 
-        assertArrayEquals(Arrays.copyOfRange(expectedBytes, position, position + actualBytes.length), actualBytes);
+        assertArrayEquals(Arrays.copyOfRange(expectedBytes, (int) position, (int) (position + actualBytes.length)), actualBytes);
         assertThat(stream.isEof(), is(false));
         assertThat(stream.isAborted(), is(true));
     }
 
-    private S3RetryingInputStream createInputStream(final byte[] data, @Nullable final Integer position, @Nullable final Integer length)
+    private S3RetryingInputStream createInputStream(final byte[] data, final Long start, final Long length)
         throws IOException {
-//        final S3Object s3Object = new S3Object();
+        long end = Math.addExact(start, length - 1);
         final S3Client client = mock(S3Client.class);
         when(client.getObject(any(GetObjectRequest.class))).thenReturn(new ResponseInputStream<>(
             GetObjectResponse.builder()
-                .contentLength(Long.valueOf(length))
+                .contentLength(length)
+                .contentRange(Range.toHttpRangeHeader(start, end))
             .build(),
-            new ByteArrayInputStream(data))
+            new ByteArrayInputStream(data, Math.toIntExact(start), Math.toIntExact(length)))
         );
         final AmazonS3Reference clientReference = mock(AmazonS3Reference.class);
         when(clientReference.get()).thenReturn(client);
         final S3BlobStore blobStore = mock(S3BlobStore.class);
         when(blobStore.clientReference()).thenReturn(clientReference);
 
-        if (position != null && length != null) {
-            return new S3RetryingInputStream(blobStore, "_blob", position, Math.addExact(position, length - 1));
-        } else {
-            return new S3RetryingInputStream(blobStore, "_blob");
-        }
+        return new S3RetryingInputStream(blobStore, "_blob", start, end);
     }
 }

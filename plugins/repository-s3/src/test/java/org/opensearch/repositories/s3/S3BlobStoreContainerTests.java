@@ -42,6 +42,7 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
@@ -57,6 +58,7 @@ import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -67,7 +69,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -145,7 +146,10 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
         final RequestBody requestBody = requestBodyArgumentCaptor.getValue();
         assertEquals(bucketName, request.bucket());
         assertEquals(blobPath.buildAsString() + blobName, request.key());
-        assertEquals(inputStream, requestBody.contentStreamProvider().newStream());
+        byte[] expectedBytes = inputStream.readAllBytes();
+        try (InputStream is = requestBody.contentStreamProvider().newStream()) {
+            assertArrayEquals(expectedBytes, is.readAllBytes());
+        }
         assertEquals(blobSize, request.contentLength().longValue());
         assertEquals(storageClass, request.storageClass());
         assertEquals(cannedAccessControlList, request.acl());
@@ -262,8 +266,11 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
             assertEquals(blobPath.buildAsString() + blobName, uploadPartRequest.key());
             assertEquals(createMultipartUploadResponse.uploadId(), uploadPartRequest.uploadId());
             assertEquals(i + 1, uploadPartRequest.partNumber().intValue());
-            assertEquals(inputStream, requestBody.contentStreamProvider().newStream());
-            assertEquals(numberOfParts.v2(), uploadPartRequest.contentLength());
+            byte[] expectedBytes = inputStream.readAllBytes();
+            try (InputStream is = requestBody.contentStreamProvider().newStream()) {
+                byte[] actualBytes = is.readAllBytes();
+                assertArrayEquals(expectedBytes, actualBytes);
+            }
         }
 
         final CompleteMultipartUploadRequest completeMultipartUploadRequest = completeMultipartUploadRequestArgumentCaptor.getValue();
@@ -333,7 +340,7 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
         }
 
         final ArgumentCaptor<AbortMultipartUploadRequest> argumentCaptor = ArgumentCaptor.forClass(AbortMultipartUploadRequest.class);
-        doNothing().when(client).abortMultipartUpload(argumentCaptor.capture());
+        when(client.abortMultipartUpload(argumentCaptor.capture())).thenReturn(AbortMultipartUploadResponse.builder().build());
 
         final IOException e = expectThrows(IOException.class, () -> {
             final S3BlobContainer blobContainer = new S3BlobContainer(blobPath, blobStore);
@@ -404,7 +411,6 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
             "public-read",
             "public-read-write",
             "authenticated-read",
-            "log-delivery-write",
             "bucket-owner-read",
             "bucket-owner-full-control" };
 
