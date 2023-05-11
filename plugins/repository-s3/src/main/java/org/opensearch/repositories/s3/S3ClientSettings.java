@@ -44,6 +44,7 @@ import org.opensearch.common.settings.Settings;
 import org.opensearch.common.settings.SettingsException;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.repositories.s3.utils.Protocol;
+import software.amazon.awssdk.core.signer.Signer;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;

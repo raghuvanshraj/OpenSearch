@@ -290,7 +290,6 @@ class S3RetryingInputStream extends InputStream {
     }
 
     // package-private for tests
-    // TODO this is not used in production code, need to see how it is used in tests
     boolean isAborted() {
         return isStreamAborted.get();
     }

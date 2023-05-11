@@ -273,12 +273,12 @@ class S3BlobContainer extends AbstractBlobContainer {
     }
 
     private static DeleteObjectsRequest bulkDelete(String bucket, List<String> blobs) {
-        // TODO ensure that blob is supposed to be the key here
         return DeleteObjectsRequest.builder()
             .bucket(bucket)
             .delete(
                 Delete.builder()
                     .objects(blobs.stream().map(blob -> ObjectIdentifier.builder().key(blob).build()).collect(Collectors.toList()))
+                    .quiet(true)
                     .build()
             )
             .build();

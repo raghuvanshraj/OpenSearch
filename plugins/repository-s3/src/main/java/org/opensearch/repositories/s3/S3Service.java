@@ -45,6 +45,7 @@ import org.opensearch.common.collect.MapBuilder;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.repositories.s3.S3ClientSettings.IrsaCredentials;
 import org.opensearch.repositories.s3.utils.Protocol;
+import org.opensearch.repositories.s3.utils.SignerUtils;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ContainerCredentialsProvider;
@@ -53,6 +54,7 @@ import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvide
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.SdkSystemSetting;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.http.SystemPropertyTlsKeyManagersProvider;
@@ -63,13 +65,11 @@ import software.amazon.awssdk.profiles.ProfileFileSystemSetting;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
-import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleWithWebIdentityCredentialsProvider;
+import software.amazon.awssdk.services.sts.auth.StsWebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
-import software.amazon.awssdk.services.sts.model.AssumeRoleWithWebIdentityRequest;
 
 import javax.net.ssl.SSLContext;
 import java.io.Closeable;
@@ -282,7 +282,6 @@ class S3Service implements Closeable {
         if (clientSettings.proxySettings.getType() == ProxySettings.ProxyType.SOCKS) {
             return proxyConfiguration.build();
         }
-        // TODO check if this is the same as setting the host and port separately
         Protocol proxyProtocol = clientSettings.proxySettings.getType() == ProxySettings.ProxyType.DIRECT ? Protocol.HTTP : clientSettings.proxySettings.getType().toProtocol();
         try {
             proxyConfiguration = proxyConfiguration.endpoint(new URI(
@@ -295,7 +294,7 @@ class S3Service implements Closeable {
                 null
             ));
         } catch (URISyntaxException e) {
-            // TODO handle this
+            logger.error("Exception during URI construction for specified proxy", e);
             throw new RuntimeException(e);
         }
         proxyConfiguration = proxyConfiguration.username(clientSettings.proxySettings.getUsername());
@@ -318,10 +317,7 @@ class S3Service implements Closeable {
 //            }
 //        });
         if (Strings.hasLength(clientSettings.signerOverride)) {
-            // TODO need to check how signer override can be provided
-//            clientConfiguration.setSignerOverride(clientSettings.signerOverride);
-//             clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER,
-//             clientSettings.signerOverride);
+             clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER, SignerUtils.valueOf(clientSettings.signerOverride).getSigner());
         }
         RetryPolicy.Builder retryPolicy = RetryPolicy.builder().numRetries(clientSettings.maxRetries);
         if (!clientSettings.throttleRetries) {
@@ -344,8 +340,8 @@ class S3Service implements Closeable {
                 }
             };
         } catch (NoSuchAlgorithmException | KeyManagementException e) {
-            // TODO exception handling needs to be reviewed
-            return null;
+            logger.error("Exception during SSL context creation for SOCKS proxy", e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -392,24 +388,14 @@ class S3Service implements Closeable {
 
                 return new PrivilegedSTSAssumeRoleSessionCredentialsProvider<>(stsClient, stsCredentialsProvider);
             } else {
-                final StsAssumeRoleWithWebIdentityCredentialsProvider.Builder stsCredentialsProviderBuilder =
-                    StsAssumeRoleWithWebIdentityCredentialsProvider.builder()
+                final StsWebIdentityTokenFileCredentialsProvider.Builder stsCredentialsProviderBuilder =
+                    StsWebIdentityTokenFileCredentialsProvider.builder()
                         .stsClient(stsClient)
-                        .refreshRequest(
-                            AssumeRoleWithWebIdentityRequest.builder()
-                                .roleArn(irsaCredentials.getRoleArn())
-                                .roleSessionName(irsaCredentials.getRoleSessionName())
-                                // TODO need to see if there is a difference between the token (that is needed here) and the token file (which is being passed)
-                                .webIdentityToken(irsaCredentials.getIdentityTokenFile())
-                                .build()
-                        );
-                // new StsAssumeRoleWithWebIdentityCredentialsProvider.Builder(
-                // irsaCredentials.getRoleArn(),
-                // irsaCredentials.getRoleSessionName(),
-                // irsaCredentials.getIdentityTokenFile()
-                // ).withStsClient(stsClient);
+                        .roleArn(irsaCredentials.getRoleArn())
+                        .roleSessionName(irsaCredentials.getRoleSessionName())
+                        .webIdentityTokenFile(Path.of(irsaCredentials.getIdentityTokenFile()));
 
-                final StsAssumeRoleWithWebIdentityCredentialsProvider stsCredentialsProvider = SocketAccess.doPrivileged(
+                final StsWebIdentityTokenFileCredentialsProvider stsCredentialsProvider = SocketAccess.doPrivileged(
                     stsCredentialsProviderBuilder::build
                 );
 
@@ -481,7 +467,7 @@ class S3Service implements Closeable {
         }
     }
 
-    static class PrivilegedSTSAssumeRoleSessionCredentialsProvider<P extends AwsCredentialsProvider>
+    static class PrivilegedSTSAssumeRoleSessionCredentialsProvider<P extends AwsCredentialsProvider & AutoCloseable>
         implements
             AwsCredentialsProvider,
             Closeable {
@@ -496,6 +482,7 @@ class S3Service implements Closeable {
         @Override
         public void close() throws IOException {
             SocketAccess.doPrivilegedIOException(() -> {
+                credentials.close();
                 if (stsClient != null) {
                     stsClient.close();
                 }
