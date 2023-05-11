@@ -279,9 +279,8 @@ class S3Service implements Closeable {
 
     static ProxyConfiguration buildHttpProxyConfiguration(S3ClientSettings clientSettings) {
         ProxyConfiguration.Builder proxyConfiguration = ProxyConfiguration.builder();
-        if (clientSettings.proxySettings.getType() != ProxySettings.ProxyType.DIRECT) {
-            // TODO how to set proxy protocol?
-            // clientConfiguration.setProxyProtocol(clientSettings.proxySettings.getType().toProtocol());
+        if (clientSettings.proxySettings.getType() == ProxySettings.ProxyType.SOCKS) {
+            return proxyConfiguration.build();
         }
         // TODO check if this is the same as setting the host and port separately
         Protocol proxyProtocol = clientSettings.proxySettings.getType() == ProxySettings.ProxyType.DIRECT ? Protocol.HTTP : clientSettings.proxySettings.getType().toProtocol();

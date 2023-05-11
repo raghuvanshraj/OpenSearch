@@ -313,7 +313,7 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
         ));
     }
 
-    @Ignore
+//    @Ignore
     public void testSocksProxyConfiguration() throws IOException {
         final MockSecureSettings secureSettings = new MockSecureSettings();
         secureSettings.setString("s3.client.default.proxy.username", "aws_proxy_username");
@@ -332,7 +332,7 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
         // TODO
 //        assertEquals(Protocol.HTTPS, configuration.getProtocol());
 //        assertEquals(Protocol.HTTP, configuration.getProxyProtocol()); // default value in SDK
-        assertEquals(-1, configuration.port());
+        assertEquals(0, configuration.port());
         assertNull(configuration.username());
         assertNull(configuration.password());
     }
