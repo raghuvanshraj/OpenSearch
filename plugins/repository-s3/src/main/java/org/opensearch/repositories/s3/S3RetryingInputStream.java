@@ -36,7 +36,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.opensearch.common.collect.Tuple;
 import org.opensearch.common.util.io.IOUtils;
-import org.opensearch.repositories.s3.utils.Range;
+import org.opensearch.repositories.s3.utils.HttpRangeUtils;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -111,7 +111,7 @@ class S3RetryingInputStream extends InputStream {
                     + " end="
                     + end;
 //                getObjectRequest.setRange(Math.addExact(start, currentOffset), end);
-                getObjectRequest.range(Range.toHttpRangeHeader(Math.addExact(start, currentOffset), end));
+                getObjectRequest.range(HttpRangeUtils.toHttpRangeHeader(Math.addExact(start, currentOffset), end));
             }
             final ResponseInputStream<GetObjectResponse> getObjectResponseInputStream = SocketAccess.doPrivileged(
                 () -> clientReference.get().getObject(getObjectRequest.build())
@@ -136,7 +136,7 @@ class S3RetryingInputStream extends InputStream {
         try {
             // Returns the content range of the object if response contains the Content-Range header.
             if (getObjectResponse.contentRange() != null) {
-                final Tuple<Long, Long> s3ResponseRange = Range.fromHttpRangeHeader(getObjectResponse.contentRange());
+                final Tuple<Long, Long> s3ResponseRange = HttpRangeUtils.fromHttpRangeHeader(getObjectResponse.contentRange());
                 assert s3ResponseRange.v2() >= s3ResponseRange.v1() : s3ResponseRange.v2()
                     + " vs "
                     + s3ResponseRange.v1();

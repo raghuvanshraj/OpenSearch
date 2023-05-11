@@ -244,13 +244,6 @@ class S3Service implements Closeable {
     static ApacheHttpClient.Builder buildHttpClient(S3ClientSettings clientSettings) {
         ApacheHttpClient.Builder clientBuilder = ApacheHttpClient.builder();
 
-        // the response metadata cache is only there for diagnostics purposes,
-        // but can force objects from every response to the old generation.
-        // TODO setResponseMetadataCacheSize is not supported in v2
-        // clientConfiguration.setResponseMetadataCacheSize(0);
-        // TODO need to set an http: endpoint explicitly, https is default
-        // clientConfiguration.setProtocol(clientSettings.protocol);
-
         if (!clientSettings.proxySettings.equals(ProxySettings.NO_PROXY_SETTINGS)) {
             if (clientSettings.proxySettings.getType() == ProxySettings.ProxyType.SOCKS) {
                 SocketAccess.doPrivilegedVoid(() -> {

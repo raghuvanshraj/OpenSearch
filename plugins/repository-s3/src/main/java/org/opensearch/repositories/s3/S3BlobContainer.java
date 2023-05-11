@@ -117,7 +117,6 @@ class S3BlobContainer extends AbstractBlobContainer {
             );
             return true;
         } catch (NoSuchKeyException e) {
-            // TODO need to check if this works
             return false;
         } catch (final Exception e) {
             throw new BlobStoreException("Failed to check if blob [" + blobName + "] exists", e);

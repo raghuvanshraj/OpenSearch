@@ -32,9 +32,8 @@
 
 package org.opensearch.repositories.s3;
 
-import org.opensearch.common.Nullable;
 import org.opensearch.common.io.Streams;
-import org.opensearch.repositories.s3.utils.Range;
+import org.opensearch.repositories.s3.utils.HttpRangeUtils;
 import org.opensearch.test.OpenSearchTestCase;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -110,7 +109,7 @@ public class S3RetryingInputStreamTests extends OpenSearchTestCase {
         when(client.getObject(any(GetObjectRequest.class))).thenReturn(new ResponseInputStream<>(
             GetObjectResponse.builder()
                 .contentLength(length)
-                .contentRange(Range.toHttpRangeHeader(start, end))
+                .contentRange(HttpRangeUtils.toHttpRangeHeader(start, end))
             .build(),
             new ByteArrayInputStream(data, Math.toIntExact(start), Math.toIntExact(length)))
         );
