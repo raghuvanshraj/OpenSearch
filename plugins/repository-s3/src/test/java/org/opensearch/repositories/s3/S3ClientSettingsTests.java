@@ -287,7 +287,7 @@ public class S3ClientSettingsTests extends OpenSearchTestCase implements ConfigP
             Settings.builder().put("s3.client.other.region", region).build(),
             configPath()
         );
-        assertThat(settings.get("default").region, is(""));
+        assertThat(settings.get("default").region, is("us-east-1"));
         assertThat(settings.get("other").region, is(region));
         try (
             S3Service s3Service = new S3Service(configPath());
@@ -304,7 +304,7 @@ public class S3ClientSettingsTests extends OpenSearchTestCase implements ConfigP
             Settings.builder().put("s3.client.other.signer_override", signerOverride).build(),
             configPath()
         );
-        assertThat(settings.get("default").region, is(""));
+        assertThat(settings.get("default").region, is("us-east-1"));
         assertThat(settings.get("other").signerOverride, is(signerOverride));
         // TODO uncomment after signer override setting is figured out
 //        ClientConfiguration defaultConfiguration = S3Service.buildConfiguration(settings.get("default"));
