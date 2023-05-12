@@ -86,6 +86,7 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 import static java.util.Collections.emptyMap;
@@ -136,7 +137,7 @@ class S3Service implements Closeable {
      * Attempts to retrieve a client by its repository metadata and settings from the cache.
      * If the client does not exist it will be created.
      */
-    public AmazonS3Reference client(RepositoryMetadata repositoryMetadata) {
+    public AmazonS3Reference client(RepositoryMetadata repositoryMetadata, StatsMetricPublisher statsMetricPublisher) {
         final S3ClientSettings clientSettings = settings(repositoryMetadata);
         {
             final AmazonS3Reference clientReference = clientsCache.get(clientSettings);
@@ -149,7 +150,7 @@ class S3Service implements Closeable {
             if (existing != null && existing.tryIncRef()) {
                 return existing;
             }
-            final AmazonS3Reference clientReference = new AmazonS3Reference(buildClient(clientSettings));
+            final AmazonS3Reference clientReference = new AmazonS3Reference(buildClient(clientSettings, statsMetricPublisher));
             clientReference.incRef();
             clientsCache = MapBuilder.newMapBuilder(clientsCache).put(clientSettings, clientReference).immutableMap();
             return clientReference;
@@ -192,14 +193,14 @@ class S3Service implements Closeable {
     }
 
     // proxy for testing
-    AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings) {
+    AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings, StatsMetricPublisher statsMetricPublisher) {
         setDefaultAwsProfilePath();
         final S3ClientBuilder builder = S3Client.builder();
 
         final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
         builder.credentialsProvider(credentials);
         builder.httpClientBuilder(buildHttpClient(clientSettings));
-        builder.overrideConfiguration(buildOverrideConfiguration(clientSettings));
+        builder.overrideConfiguration(buildOverrideConfiguration(clientSettings, statsMetricPublisher));
 
         String endpoint = Strings.hasLength(clientSettings.endpoint) ? clientSettings.endpoint : DEFAULT_S3_ENDPOINT;
         if ((endpoint.startsWith("http://") || endpoint.startsWith("https://")) == false) {
@@ -292,23 +293,13 @@ class S3Service implements Closeable {
         }
         proxyConfiguration = proxyConfiguration.username(clientSettings.proxySettings.getUsername());
         proxyConfiguration = proxyConfiguration.password(clientSettings.proxySettings.getPassword());
-        // clientConfiguration.setProxyHost(clientSettings.proxySettings.getHostName());
-        // clientConfiguration.setProxyPort(clientSettings.proxySettings.getPort());
 
         return proxyConfiguration.build();
     }
 
-    static ClientOverrideConfiguration buildOverrideConfiguration(final S3ClientSettings clientSettings) {
-        ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder();
-        // TODO using this we should be able to register a request interceptor that will record metrics
-        // TODO also check if we can do this using MetricsPublishers
-//        clientOverrideConfiguration.addExecutionInterceptor(new ExecutionInterceptor() {
-//            @Override
-//            public void beforeTransmission(Context.BeforeTransmission context, ExecutionAttributes executionAttributes) {
-//                context.httpRequest().method()
-//                ExecutionInterceptor.super.beforeTransmission(context, executionAttributes);
-//            }
-//        });
+    static ClientOverrideConfiguration buildOverrideConfiguration(final S3ClientSettings clientSettings, StatsMetricPublisher statsMetricPublisher) {
+        ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder()
+            .metricPublishers(List.of(statsMetricPublisher));
         if (Strings.hasLength(clientSettings.signerOverride)) {
              clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER, SignerUtils.valueOf(clientSettings.signerOverride).getSigner());
         }

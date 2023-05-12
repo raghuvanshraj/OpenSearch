@@ -15,8 +15,7 @@ import software.amazon.awssdk.core.signer.NoOpSigner;
 import software.amazon.awssdk.core.signer.Signer;
 
 public enum SignerUtils {
-    //    QUERY_STRING_SIGNER("QueryStringSignerType",
-//        VERSION_THREE_SIGNER("AWS3SignerType",
+
     VERSION_FOUR_SIGNER("AWS4SignerType", Aws4Signer.create()),
     VERSION_FOUR_UNSIGNED_PAYLOAD_SIGNER("AWS4UnsignedPayloadSignerType", Aws4UnsignedPayloadSigner.create()),
     NO_OP_SIGNER("NoOpSignerType", new NoOpSigner()),

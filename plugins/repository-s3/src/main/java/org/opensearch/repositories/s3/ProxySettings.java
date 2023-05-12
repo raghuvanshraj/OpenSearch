@@ -28,7 +28,7 @@ public class ProxySettings {
 
         private final String name;
 
-        private ProxyType(String name) {
+        ProxyType(String name) {
             this.name = name;
         }
 

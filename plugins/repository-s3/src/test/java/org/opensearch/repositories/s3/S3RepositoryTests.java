@@ -61,7 +61,7 @@ public class S3RepositoryTests extends OpenSearchTestCase implements ConfigPathS
         }
 
         @Override
-        public AmazonS3Reference client(RepositoryMetadata repositoryMetadata) {
+        public AmazonS3Reference client(RepositoryMetadata repositoryMetadata, StatsMetricPublisher statsMetricPublisher) {
             return new AmazonS3Reference(S3Client.create());
         }
 

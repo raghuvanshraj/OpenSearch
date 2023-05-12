@@ -102,7 +102,6 @@ class S3RetryingInputStream extends InputStream {
     private void openStream() throws IOException {
         try (AmazonS3Reference clientReference = blobStore.clientReference()) {
             final GetObjectRequest.Builder getObjectRequest = GetObjectRequest.builder().bucket(blobStore.bucket()).key(blobKey);
-            // getObjectRequest.setRequestMetricCollector(blobStore.getMetricCollector);
             if (currentOffset > 0 || start > 0 || end < Long.MAX_VALUE - 1) {
                 assert start + currentOffset <= end : "requesting beyond end, start = "
                     + start
@@ -110,7 +109,6 @@ class S3RetryingInputStream extends InputStream {
                     + currentOffset
                     + " end="
                     + end;
-//                getObjectRequest.setRange(Math.addExact(start, currentOffset), end);
                 getObjectRequest.range(HttpRangeUtils.toHttpRangeHeader(Math.addExact(start, currentOffset), end));
             }
             final ResponseInputStream<GetObjectResponse> getObjectResponseInputStream = SocketAccess.doPrivileged(

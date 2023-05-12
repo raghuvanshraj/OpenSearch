@@ -34,7 +34,6 @@ package org.opensearch.repositories.s3;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.Before;
 import org.opensearch.client.node.NodeClient;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
 import org.opensearch.cluster.service.ClusterService;
@@ -335,8 +334,8 @@ public class RepositoryCredentialsTests extends OpenSearchSingleNodeTestCase imp
             }
 
             @Override
-            AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings) {
-                final AmazonS3WithCredentials client = SocketAccess.doPrivileged(() -> super.buildClient(clientSettings));
+            AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings, StatsMetricPublisher statsMetricPublisher) {
+                final AmazonS3WithCredentials client = SocketAccess.doPrivileged(() -> super.buildClient(clientSettings, statsMetricPublisher));
                 final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
                 return AmazonS3WithCredentials.create(new ClientAndCredentials(client.client(), credentials), credentials);
             }

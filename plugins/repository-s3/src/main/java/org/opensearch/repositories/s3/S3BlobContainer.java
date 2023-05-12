@@ -88,7 +88,6 @@ import static org.opensearch.repositories.s3.S3Repository.MAX_FILE_SIZE;
 import static org.opensearch.repositories.s3.S3Repository.MAX_FILE_SIZE_USING_MULTIPART;
 import static org.opensearch.repositories.s3.S3Repository.MIN_PART_SIZE_USING_MULTIPART;
 
-// TODO Client side metrics collection is not supported in the v2 SDK yet, need to check further
 class S3BlobContainer extends AbstractBlobContainer {
 
     private static final Logger logger = LogManager.getLogger(S3BlobContainer.class);
@@ -335,7 +334,6 @@ class S3BlobContainer extends AbstractBlobContainer {
 
     private ListObjectsV2Request listObjectsRequest(String keyPath) {
         return ListObjectsV2Request.builder().bucket(blobStore.bucket()).prefix(keyPath).delimiter("/").build();
-        // .withRequestMetricCollector(blobStore.listMetricCollector);
     }
 
     private String buildKey(String blobName) {
@@ -356,12 +354,6 @@ class S3BlobContainer extends AbstractBlobContainer {
             throw new IllegalArgumentException("Upload request size [" + blobSize + "] can't be larger than buffer size");
         }
 
-        // final ObjectMetadata md = new ObjectMetadata();
-        // md.setContentLength(blobSize);
-        // if (blobStore.serverSideEncryption()) {
-        // md.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
-        // }
-        // TODO need to see how we can specify metric collector
         PutObjectRequest.Builder putObjectRequest = PutObjectRequest.builder()
             .bucket(blobStore.bucket())
             .key(blobName)
@@ -371,7 +363,6 @@ class S3BlobContainer extends AbstractBlobContainer {
         if (blobStore.serverSideEncryption()) {
             putObjectRequest.sseCustomerAlgorithm(ServerSideEncryption.AES256.toString());
         }
-        // putRequest.setRequestMetricCollector(blobStore.putMetricCollector);
 
         try (AmazonS3Reference clientReference = blobStore.clientReference()) {
             SocketAccess.doPrivilegedVoid(
@@ -453,7 +444,7 @@ class S3BlobContainer extends AbstractBlobContainer {
                 .uploadId(uploadId.get())
                 .multipartUpload(CompletedMultipartUpload.builder().parts(parts).build())
                 .build();
-            // complRequest.setRequestMetricCollector(blobStore.multiPartUploadMetricCollector);
+
             SocketAccess.doPrivilegedVoid(() -> clientReference.get().completeMultipartUpload(complRequest));
             success = true;
 

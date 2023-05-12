@@ -33,7 +33,6 @@
 package org.opensearch.repositories.s3;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.opensearch.common.settings.MockSecureSettings;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.repositories.s3.utils.Protocol;
@@ -370,7 +369,7 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
             assertThat(proxyConfiguration.password(), is(expectedProxyPassword));
         }
 
-        final ClientOverrideConfiguration clientOverrideConfiguration = S3Service.buildOverrideConfiguration(clientSettings);
+        final ClientOverrideConfiguration clientOverrideConfiguration = S3Service.buildOverrideConfiguration(clientSettings, new StatsMetricPublisher());
 
         // TODO not supported in v2
 //        assertThat(configuration.getResponseMetadataCacheSize(), is(0));

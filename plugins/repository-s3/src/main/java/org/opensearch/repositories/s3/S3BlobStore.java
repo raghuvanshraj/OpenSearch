@@ -32,13 +32,6 @@
 
 package org.opensearch.repositories.s3;
 
-//import software.amazon.awssdk.Request;
-//import software.amazon.awssdk.Response;
-//import software.amazon.awssdk.metrics.RequestMetricCollector;
-//import software.amazon.awssdk.services.s3.model.CannedAccessControlList;
-import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
-import software.amazon.awssdk.services.s3.model.StorageClass;
-//import software.amazon.awssdk.util.AWSRequestMetrics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
@@ -47,12 +40,12 @@ import org.opensearch.common.blobstore.BlobPath;
 import org.opensearch.common.blobstore.BlobStore;
 import org.opensearch.common.blobstore.BlobStoreException;
 import org.opensearch.common.unit.ByteSizeValue;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
+import software.amazon.awssdk.services.s3.model.StorageClass;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 class S3BlobStore implements BlobStore {
 
@@ -72,12 +65,7 @@ class S3BlobStore implements BlobStore {
 
     private final RepositoryMetadata repositoryMetadata;
 
-    private final Stats stats = new Stats();
-
-    // final RequestMetricCollector getMetricCollector;
-    // final RequestMetricCollector listMetricCollector;
-    // final RequestMetricCollector putMetricCollector;
-    // final RequestMetricCollector multiPartUploadMetricCollector;
+    private final StatsMetricPublisher statsMetricPublisher = new StatsMetricPublisher();
 
     S3BlobStore(
         S3Service service,
@@ -95,44 +83,7 @@ class S3BlobStore implements BlobStore {
         this.cannedACL = initCannedACL(cannedACL);
         this.storageClass = initStorageClass(storageClass);
         this.repositoryMetadata = repositoryMetadata;
-        // this.getMetricCollector = new RequestMetricCollector() {
-        // @Override
-        // public void collectMetrics(Request<?> request, Response<?> response) {
-        // assert request.getHttpMethod().name().equals("GET");
-        // stats.getCount.addAndGet(getRequestCount(request));
-        // }
-        // };
-        // this.listMetricCollector = new RequestMetricCollector() {
-        // @Override
-        // public void collectMetrics(Request<?> request, Response<?> response) {
-        // assert request.getHttpMethod().name().equals("GET");
-        // stats.listCount.addAndGet(getRequestCount(request));
-        // }
-        // };
-        // this.putMetricCollector = new RequestMetricCollector() {
-        // @Override
-        // public void collectMetrics(Request<?> request, Response<?> response) {
-        // assert request.getHttpMethod().name().equals("PUT");
-        // stats.putCount.addAndGet(getRequestCount(request));
-        // }
-        // };
-        // this.multiPartUploadMetricCollector = new RequestMetricCollector() {
-        // @Override
-        // public void collectMetrics(Request<?> request, Response<?> response) {
-        // assert request.getHttpMethod().name().equals("PUT") || request.getHttpMethod().name().equals("POST");
-        // stats.postCount.addAndGet(getRequestCount(request));
-        // }
-        // };
     }
-
-    // private long getRequestCount(Request<?> request) {
-    // Number requestCount = request.getAWSRequestMetrics().getTimingInfo().getCounter(AWSRequestMetrics.Field.RequestCount.name());
-    // if (requestCount == null) {
-    // logger.warn("Expected request count to be tracked for request [{}] but found not count.", request);
-    // return 0L;
-    // }
-    // return requestCount.longValue();
-    // }
 
     @Override
     public String toString() {
@@ -140,7 +91,7 @@ class S3BlobStore implements BlobStore {
     }
 
     public AmazonS3Reference clientReference() {
-        return service.client(repositoryMetadata);
+        return service.client(repositoryMetadata, statsMetricPublisher);
     }
 
     int getMaxRetries() {
@@ -171,7 +122,7 @@ class S3BlobStore implements BlobStore {
 
     @Override
     public Map<String, Long> stats() {
-        return stats.toMap();
+        return statsMetricPublisher.getStats().toMap();
     }
 
     public ObjectCannedACL getCannedACL() {
@@ -214,25 +165,5 @@ class S3BlobStore implements BlobStore {
         }
 
         throw new BlobStoreException("cannedACL is not valid: [" + cannedACL + "]");
-    }
-
-    static class Stats {
-
-        final AtomicLong listCount = new AtomicLong();
-
-        final AtomicLong getCount = new AtomicLong();
-
-        final AtomicLong putCount = new AtomicLong();
-
-        final AtomicLong postCount = new AtomicLong();
-
-        Map<String, Long> toMap() {
-            final Map<String, Long> results = new HashMap<>();
-            results.put("GetObject", getCount.get());
-            results.put("ListObjects", listCount.get());
-            results.put("PutObject", putCount.get());
-            results.put("PutMultipartObject", postCount.get());
-            return results;
-        }
     }
 }
