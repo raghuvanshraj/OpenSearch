@@ -214,6 +214,7 @@ class S3BlobContainer extends AbstractBlobContainer {
     }
 
     private void doDeleteBlobs(List<String> blobNames, boolean relative) throws IOException {
+        System.out.println("DELETE REQUEST FOR: " + blobNames);
         if (blobNames.isEmpty()) {
             return;
         }
@@ -294,7 +295,7 @@ class S3BlobContainer extends AbstractBlobContainer {
         try (AmazonS3Reference clientReference = blobStore.clientReference()) {
             return executeListing(clientReference, listObjectsRequest(prefix)).stream()
                 .flatMap(listing -> listing.contents().stream())
-                .map(summary -> new PlainBlobMetadata(summary.key().substring(keyPath.length()), summary.size()))
+                .map(s3Object -> new PlainBlobMetadata(s3Object.key().substring(keyPath.length()), s3Object.size()))
                 .collect(Collectors.toMap(PlainBlobMetadata::name, Function.identity()));
         } catch (final SdkException e) {
             throw new IOException("Exception when listing blobs by prefix [" + prefix + "]", e);

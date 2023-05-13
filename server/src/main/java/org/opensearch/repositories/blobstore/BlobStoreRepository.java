@@ -1262,6 +1262,12 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         Set<String> survivingIndexIds,
         GroupedActionListener<DeleteResult> listener
     ) {
+        for (String index : foundIndices.keySet()) {
+            System.out.println("FOUND INDEX: " + index);
+        }
+        for (String index : survivingIndexIds) {
+            System.out.println("SURVIVING INDEX: " + index);
+        }
         final GroupedActionListener<DeleteResult> groupedListener = new GroupedActionListener<>(ActionListener.wrap(deleteResults -> {
             DeleteResult deleteResult = DeleteResult.ZERO;
             for (DeleteResult result : deleteResults) {
@@ -1302,6 +1308,7 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
         Map.Entry<String, BlobContainer> indexEntry = staleIndicesToDelete.poll(0L, TimeUnit.MILLISECONDS);
         if (indexEntry != null) {
             final String indexSnId = indexEntry.getKey();
+            System.out.println("STALE INDEX: " + indexSnId);
             threadPool.executor(ThreadPool.Names.SNAPSHOT).execute(ActionRunnable.supply(listener, () -> {
                 DeleteResult deleteResult = DeleteResult.ZERO;
                 try {

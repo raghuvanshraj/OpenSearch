@@ -211,9 +211,11 @@ public class S3HttpHandler implements HttpHandler {
                     list.append("</Contents>");
                 }
                 if (commonPrefixes.isEmpty() == false) {
-                    list.append("<CommonPrefixes>");
-                    commonPrefixes.forEach(commonPrefix -> list.append("<Prefix>").append(commonPrefix).append("</Prefix>"));
-                    list.append("</CommonPrefixes>");
+                    commonPrefixes.forEach(commonPrefix -> {
+                        list.append("<CommonPrefixes>");
+                        list.append("<Prefix>").append(commonPrefix).append("</Prefix>");
+                        list.append("</CommonPrefixes>");
+                    });
 
                 }
                 list.append("</ListBucketResult>");
