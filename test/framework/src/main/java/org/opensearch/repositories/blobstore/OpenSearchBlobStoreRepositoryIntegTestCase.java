@@ -33,6 +33,7 @@ package org.opensearch.repositories.blobstore;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.junit.Ignore;
 import org.opensearch.action.ActionRunnable;
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotRequestBuilder;
 import org.opensearch.action.admin.cluster.snapshots.create.CreateSnapshotResponse;

@@ -45,7 +45,7 @@ import org.opensearch.common.collect.MapBuilder;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.repositories.s3.S3ClientSettings.IrsaCredentials;
 import org.opensearch.repositories.s3.utils.Protocol;
-import org.opensearch.repositories.s3.utils.SignerUtils;
+import org.opensearch.repositories.s3.utils.AwsRequestSigner;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ContainerCredentialsProvider;
@@ -235,10 +235,10 @@ class S3Service implements Closeable {
     @SuppressForbidden(reason = "Need to provide this override to v2 SDK so that path does not default to home path")
     static void setDefaultAwsProfilePath() {
         if (ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.getStringValue().isEmpty()) {
-            System.setProperty(ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(), System.getProperty("opensearch.path.conf"));
+            SocketAccess.doPrivileged(() -> System.setProperty(ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(), System.getProperty("opensearch.path.conf")));
         }
         if (ProfileFileSystemSetting.AWS_CONFIG_FILE.getStringValue().isEmpty()) {
-            System.setProperty(ProfileFileSystemSetting.AWS_CONFIG_FILE.property(), System.getProperty("opensearch.path.conf"));
+            SocketAccess.doPrivileged(() -> System.setProperty(ProfileFileSystemSetting.AWS_CONFIG_FILE.property(), System.getProperty("opensearch.path.conf")));
         }
     }
 
@@ -301,7 +301,7 @@ class S3Service implements Closeable {
         ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder()
             .metricPublishers(List.of(statsMetricPublisher));
         if (Strings.hasLength(clientSettings.signerOverride)) {
-             clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER, SignerUtils.valueOf(clientSettings.signerOverride).getSigner());
+             clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER, AwsRequestSigner.fromSignerName(clientSettings.signerOverride).getSigner());
         }
         RetryPolicy.Builder retryPolicy = RetryPolicy.builder().numRetries(clientSettings.maxRetries);
         if (!clientSettings.throttleRetries) {
