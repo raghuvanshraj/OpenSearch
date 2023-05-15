@@ -39,9 +39,14 @@ public class StatsMetricPublisher implements MetricPublisher {
         stats.putCount.addAndGet(metricCollection.metricValues(CoreMetric.OPERATION_NAME).stream().filter(operation -> operation.equals(PUT_OBJECT_OPERATION)).count());
 
         // Multipart Uploads
-        stats.postCount.addAndGet(metricCollection.metricValues(CoreMetric.OPERATION_NAME).stream().filter(operation -> operation.equals(CREATE_MULTIPART_UPLOAD_OPERATION) ||
-            operation.equals(UPLOAD_PART_OPERATION) ||
-            operation.equals(COMPLETE_MULTIPART_UPLOAD_OPERATION)).count());
+        stats.postCount.addAndGet(
+            metricCollection.metricValues(CoreMetric.OPERATION_NAME)
+                .stream().filter(
+                    operation -> operation.equals(CREATE_MULTIPART_UPLOAD_OPERATION) ||
+                        operation.equals(UPLOAD_PART_OPERATION) ||
+                        operation.equals(COMPLETE_MULTIPART_UPLOAD_OPERATION)
+                ).count()
+        );
     }
 
     @Override

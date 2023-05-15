@@ -92,9 +92,6 @@ public class S3HttpHandler implements HttpHandler {
     @Override
     public void handle(final HttpExchange exchange) throws IOException {
         final String request = exchange.getRequestMethod() + " " + exchange.getRequestURI().toString();
-        if (blobs.size() < 10 || blobs.size() % 50 == 0) {
-            System.out.println("CURRENT BLOBS SIZE: " + blobs.size());
-        }
 //        if (request.startsWith("GET") || request.startsWith("HEAD") || request.startsWith("DELETE")) {
 //            int read = exchange.getRequestBody().read();
 //            assert read == -1 : "Request body should have been empty but saw [" + read + "]";

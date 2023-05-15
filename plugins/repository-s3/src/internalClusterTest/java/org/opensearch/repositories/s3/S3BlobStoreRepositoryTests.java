@@ -245,7 +245,7 @@ public class S3BlobStoreRepositoryTests extends OpenSearchMockAPIBasedRepository
 
         @Override
         public void maybeTrack(final String request, Headers requestHeaders) {
-            if (Regex.simpleMatch("GET /*/?prefix=*", request)) {
+            if (Regex.simpleMatch("GET /*?list-type=*", request)) {
                 trackRequest("ListObjects");
             } else if (Regex.simpleMatch("GET /*/*", request)) {
                 trackRequest("GetObject");

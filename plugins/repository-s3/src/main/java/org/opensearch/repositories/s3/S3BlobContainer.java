@@ -214,7 +214,6 @@ class S3BlobContainer extends AbstractBlobContainer {
     }
 
     private void doDeleteBlobs(List<String> blobNames, boolean relative) throws IOException {
-        System.out.println("DELETE REQUEST FOR: " + blobNames);
         if (blobNames.isEmpty()) {
             return;
         }
