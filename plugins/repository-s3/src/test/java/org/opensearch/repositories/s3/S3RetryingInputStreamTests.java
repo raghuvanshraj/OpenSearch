@@ -102,16 +102,14 @@ public class S3RetryingInputStreamTests extends OpenSearchTestCase {
         assertThat(stream.isAborted(), is(true));
     }
 
-    private S3RetryingInputStream createInputStream(final byte[] data, final Long start, final Long length)
-        throws IOException {
+    private S3RetryingInputStream createInputStream(final byte[] data, final Long start, final Long length) throws IOException {
         long end = Math.addExact(start, length - 1);
         final S3Client client = mock(S3Client.class);
-        when(client.getObject(any(GetObjectRequest.class))).thenReturn(new ResponseInputStream<>(
-            GetObjectResponse.builder()
-                .contentLength(length)
-                .contentRange(HttpRangeUtils.toHttpRangeHeader(start, end))
-            .build(),
-            new ByteArrayInputStream(data, Math.toIntExact(start), Math.toIntExact(length)))
+        when(client.getObject(any(GetObjectRequest.class))).thenReturn(
+            new ResponseInputStream<>(
+                GetObjectResponse.builder().contentLength(length).contentRange(HttpRangeUtils.toHttpRangeHeader(start, end)).build(),
+                new ByteArrayInputStream(data, Math.toIntExact(start), Math.toIntExact(length))
+            )
         );
         final AmazonS3Reference clientReference = mock(AmazonS3Reference.class);
         when(clientReference.get()).thenReturn(client);

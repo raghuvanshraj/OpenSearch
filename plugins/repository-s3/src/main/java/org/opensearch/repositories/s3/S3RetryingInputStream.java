@@ -104,11 +104,7 @@ class S3RetryingInputStream extends InputStream {
             final GetObjectRequest.Builder getObjectRequest = GetObjectRequest.builder()
                 .bucket(blobStore.bucket())
                 .key(blobKey)
-                .overrideConfiguration(
-                    o -> o.addMetricPublisher(
-                        blobStore.getStatsMetricPublisher().getObjectMetricPublisher
-                    )
-                );
+                .overrideConfiguration(o -> o.addMetricPublisher(blobStore.getStatsMetricPublisher().getObjectMetricPublisher));
             if (currentOffset > 0 || start > 0 || end < Long.MAX_VALUE - 1) {
                 assert start + currentOffset <= end : "requesting beyond end, start = "
                     + start
@@ -142,9 +138,7 @@ class S3RetryingInputStream extends InputStream {
             // Returns the content range of the object if response contains the Content-Range header.
             if (getObjectResponse.contentRange() != null) {
                 final Tuple<Long, Long> s3ResponseRange = HttpRangeUtils.fromHttpRangeHeader(getObjectResponse.contentRange());
-                assert s3ResponseRange.v2() >= s3ResponseRange.v1() : s3ResponseRange.v2()
-                    + " vs "
-                    + s3ResponseRange.v1();
+                assert s3ResponseRange.v2() >= s3ResponseRange.v1() : s3ResponseRange.v2() + " vs " + s3ResponseRange.v1();
                 assert s3ResponseRange.v1() == start + currentOffset : "Content-Range start value ["
                     + s3ResponseRange.v1()
                     + "] exceeds start ["
@@ -152,11 +146,7 @@ class S3RetryingInputStream extends InputStream {
                     + "] + current offset ["
                     + currentOffset
                     + ']';
-                assert s3ResponseRange.v2() == end : "Content-Range end value ["
-                    + s3ResponseRange.v2()
-                    + "] exceeds end ["
-                    + end
-                    + ']';
+                assert s3ResponseRange.v2() == end : "Content-Range end value [" + s3ResponseRange.v2() + "] exceeds end [" + end + ']';
                 return s3ResponseRange.v2() - s3ResponseRange.v1() + 1L;
             }
             return getObjectResponse.contentLength();

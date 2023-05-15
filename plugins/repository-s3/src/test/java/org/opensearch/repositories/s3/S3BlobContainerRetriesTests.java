@@ -53,9 +53,6 @@ import org.opensearch.common.util.concurrent.CountDown;
 import org.opensearch.common.util.io.IOUtils;
 import org.opensearch.repositories.blobstore.AbstractBlobContainerRetriesTestCase;
 import software.amazon.awssdk.core.exception.SdkClientException;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.utils.Md5Utils;
-import software.amazon.awssdk.utils.internal.Base16;
 
 import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
@@ -169,7 +166,12 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
 
             @Override
             public InputStream readBlob(String blobName, long position, long length) throws IOException {
-                return new AssertingInputStream(SocketAccess.doPrivilegedIOException(() -> super.readBlob(blobName, position, length)), blobName, position, length);
+                return new AssertingInputStream(
+                    SocketAccess.doPrivilegedIOException(() -> super.readBlob(blobName, position, length)),
+                    blobName,
+                    position,
+                    length
+                );
             }
         };
     }
@@ -290,14 +292,14 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
                 && exchange.getRequestURI().getQuery().contains("partNumber=")) {
                     // upload part request
                     // TODO need to verify assertions here
-//                    InputStream responseStream = exchange.getRequestBody();
-//                    byte[] md5 = Md5Utils.computeMD5Hash(exchange.getRequestBody());
+                    // InputStream responseStream = exchange.getRequestBody();
+                    // byte[] md5 = Md5Utils.computeMD5Hash(exchange.getRequestBody());
                     BytesReference bytes = Streams.readFully(exchange.getRequestBody());
                     assertThat((long) bytes.length(), anyOf(equalTo(lastPartSize), equalTo(bufferSize.getBytes())));
                     assertThat(contentLength, anyOf(equalTo(lastPartSize), equalTo(bufferSize.getBytes())));
 
                     if (countDownUploads.decrementAndGet() % 2 == 0) {
-//                        exchange.getResponseHeaders().add("ETag", Base16.encodeAsString(md5));
+                        // exchange.getResponseHeaders().add("ETag", Base16.encodeAsString(md5));
                         exchange.sendResponseHeaders(HttpStatus.SC_OK, -1);
                         exchange.close();
                         return;

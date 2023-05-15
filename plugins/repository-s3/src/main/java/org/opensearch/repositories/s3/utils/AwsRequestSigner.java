@@ -42,7 +42,9 @@ public enum AwsRequestSigner {
     }
 
     public static AwsRequestSigner fromSignerName(String signerName) {
-        List<AwsRequestSigner> matchingSigners = Arrays.stream(AwsRequestSigner.values()).filter(awsRequestSigner -> awsRequestSigner.getName().equals(signerName)).collect(Collectors.toList());
+        List<AwsRequestSigner> matchingSigners = Arrays.stream(AwsRequestSigner.values())
+            .filter(awsRequestSigner -> awsRequestSigner.getName().equals(signerName))
+            .collect(Collectors.toList());
         if (matchingSigners.size() < 1) {
             throw new IllegalArgumentException("No matching signers found for signerName: " + signerName);
         } else if (matchingSigners.size() > 1) {

@@ -77,12 +77,12 @@ import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertAcked;
 @SuppressForbidden(reason = "test requires to set a System property to allow insecure settings when running in IDE")
 public class RepositoryCredentialsTests extends OpenSearchSingleNodeTestCase implements ConfigPathSupport {
 
-//    @Override
-//    @Before
-//    public void setUp() throws Exception {
-//        SocketAccess.doPrivileged(() -> System.setProperty("opensearch.path.conf", configPath().toString()));
-//        super.setUp();
-//    }
+    // @Override
+    // @Before
+    // public void setUp() throws Exception {
+    // SocketAccess.doPrivileged(() -> System.setProperty("opensearch.path.conf", configPath().toString()));
+    // super.setUp();
+    // }
 
     static {
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
@@ -132,7 +132,7 @@ public class RepositoryCredentialsTests extends OpenSearchSingleNodeTestCase imp
         assertThat(repositories.repository(repositoryName), instanceOf(S3Repository.class));
 
         final S3Repository repository = (S3Repository) repositories.repository(repositoryName);
-        try (final AmazonS3Reference clientReference = SocketAccess.doPrivileged(() -> repository.createBlobStore().clientReference())){
+        try (final AmazonS3Reference clientReference = SocketAccess.doPrivileged(() -> repository.createBlobStore().clientReference())) {
             S3Client client = clientReference.get();
             assertThat(client, instanceOf(ProxyS3RepositoryPlugin.ClientAndCredentials.class));
 
@@ -173,7 +173,9 @@ public class RepositoryCredentialsTests extends OpenSearchSingleNodeTestCase imp
         assertThat(repositories.repository(repositoryName), instanceOf(S3Repository.class));
 
         final S3Repository repository = (S3Repository) repositories.repository(repositoryName);
-        try (AmazonS3Reference clientReference = SocketAccess.doPrivileged(() -> ((S3BlobStore) repository.blobStore()).clientReference())) {
+        try (
+            AmazonS3Reference clientReference = SocketAccess.doPrivileged(() -> ((S3BlobStore) repository.blobStore()).clientReference())
+        ) {
             final S3Client client = clientReference.get();
             assertThat(client, instanceOf(ProxyS3RepositoryPlugin.ClientAndCredentials.class));
 
@@ -335,7 +337,9 @@ public class RepositoryCredentialsTests extends OpenSearchSingleNodeTestCase imp
 
             @Override
             AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings, StatsMetricPublisher statsMetricPublisher) {
-                final AmazonS3WithCredentials client = SocketAccess.doPrivileged(() -> super.buildClient(clientSettings, statsMetricPublisher));
+                final AmazonS3WithCredentials client = SocketAccess.doPrivileged(
+                    () -> super.buildClient(clientSettings, statsMetricPublisher)
+                );
                 final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
                 return AmazonS3WithCredentials.create(new ClientAndCredentials(client.client(), credentials), credentials);
             }

@@ -83,7 +83,9 @@ public class S3RepositoryThirdPartyTests extends AbstractThirdPartyRepositoryTes
         } else {
             // only test different storage classes when running against the default endpoint, i.e. a genuine S3 service
             if (randomBoolean()) {
-                final String storageClass = randomFrom(Arrays.stream(StorageClass.values()).map(StorageClass::toString).collect(Collectors.toList()));
+                final String storageClass = randomFrom(
+                    Arrays.stream(StorageClass.values()).map(StorageClass::toString).collect(Collectors.toList())
+                );
                 logger.info("--> using storage_class [{}]", storageClass);
                 settings.put("storage_class", storageClass);
             }

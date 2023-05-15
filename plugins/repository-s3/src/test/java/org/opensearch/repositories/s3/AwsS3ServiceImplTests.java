@@ -242,17 +242,7 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
 
     public void testAWSDefaultConfiguration() {
         SocketAccess.doPrivilegedVoid(
-            () -> launchAWSConfigurationTest(
-                Settings.EMPTY,
-                Protocol.HTTPS,
-                null,
-                -1,
-                null,
-                null,
-                3,
-                true,
-                50_000
-            )
+            () -> launchAWSConfigurationTest(Settings.EMPTY, Protocol.HTTPS, null, -1, null, null, 3, true, 50_000)
         );
     }
 
@@ -267,17 +257,19 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
             .put("s3.client.default.proxy.port", PORT)
             .put("s3.client.default.read_timeout", "10s")
             .build();
-        SocketAccess.doPrivilegedVoid(() -> launchAWSConfigurationTest(
-            settings,
-            Protocol.HTTP,
-            HOST,
-            PORT,
-            "aws_proxy_username",
-            "aws_proxy_password",
-            3,
-            true,
-            10000
-        ));
+        SocketAccess.doPrivilegedVoid(
+            () -> launchAWSConfigurationTest(
+                settings,
+                Protocol.HTTP,
+                HOST,
+                PORT,
+                "aws_proxy_username",
+                "aws_proxy_password",
+                3,
+                true,
+                10000
+            )
+        );
         assertWarnings(
             "Using of "
                 + PROTOCOL_SETTING.getConcreteSettingForNamespace("default").getKey()
@@ -299,20 +291,22 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
             .put("s3.client.default.proxy.port", PORT)
             .put("s3.client.default.read_timeout", "10s")
             .build();
-        SocketAccess.doPrivilegedVoid(() -> launchAWSConfigurationTest(
-            settings,
-            Protocol.HTTP,
-            HOST,
-            PORT,
-            "aws_proxy_username",
-            "aws_proxy_password",
-            3,
-            true,
-            10000
-        ));
+        SocketAccess.doPrivilegedVoid(
+            () -> launchAWSConfigurationTest(
+                settings,
+                Protocol.HTTP,
+                HOST,
+                PORT,
+                "aws_proxy_username",
+                "aws_proxy_password",
+                3,
+                true,
+                10000
+            )
+        );
     }
 
-//    @Ignore
+    // @Ignore
     public void testSocksProxyConfiguration() throws IOException {
         final MockSecureSettings secureSettings = new MockSecureSettings();
         secureSettings.setString("s3.client.default.proxy.username", "aws_proxy_username");
@@ -329,8 +323,8 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
         final ProxyConfiguration configuration = S3Service.buildHttpProxyConfiguration(clientSettings);
 
         // TODO
-//        assertEquals(Protocol.HTTPS, configuration.getProtocol());
-//        assertEquals(Protocol.HTTP, configuration.getProxyProtocol()); // default value in SDK
+        // assertEquals(Protocol.HTTPS, configuration.getProtocol());
+        // assertEquals(Protocol.HTTP, configuration.getProxyProtocol()); // default value in SDK
         assertEquals(0, configuration.port());
         assertNull(configuration.username());
         assertNull(configuration.password());
@@ -369,19 +363,25 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
             assertThat(proxyConfiguration.password(), is(expectedProxyPassword));
         }
 
-        final ClientOverrideConfiguration clientOverrideConfiguration = S3Service.buildOverrideConfiguration(clientSettings, new StatsMetricPublisher());
+        final ClientOverrideConfiguration clientOverrideConfiguration = S3Service.buildOverrideConfiguration(
+            clientSettings,
+            new StatsMetricPublisher()
+        );
 
         // TODO not supported in v2
-//        assertThat(configuration.getResponseMetadataCacheSize(), is(0));
-//        assertThat(proxyConfiguration.getProtocol(), is(expectedProtocol));
+        // assertThat(configuration.getResponseMetadataCacheSize(), is(0));
+        // assertThat(proxyConfiguration.getProtocol(), is(expectedProtocol));
         assertTrue(clientOverrideConfiguration.retryPolicy().isPresent());
         assertThat(clientOverrideConfiguration.retryPolicy().get().numRetries(), is(expectedMaxRetries));
         if (expectedUseThrottleRetries) {
-            assertThat(clientOverrideConfiguration.retryPolicy().get().throttlingBackoffStrategy(), is(BackoffStrategy.defaultThrottlingStrategy()));
+            assertThat(
+                clientOverrideConfiguration.retryPolicy().get().throttlingBackoffStrategy(),
+                is(BackoffStrategy.defaultThrottlingStrategy())
+            );
         } else {
             assertThat(clientOverrideConfiguration.retryPolicy().get().throttlingBackoffStrategy(), is(BackoffStrategy.none()));
         }
-//        assertThat(proxyConfiguration.getSocketTimeout(), is(expectedReadTimeout));
+        // assertThat(proxyConfiguration.getSocketTimeout(), is(expectedReadTimeout));
     }
 
     public void testEndpointSetting() {

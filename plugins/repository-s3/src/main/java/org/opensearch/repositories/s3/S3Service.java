@@ -86,7 +86,6 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 
 import static java.util.Collections.emptyMap;
@@ -235,10 +234,17 @@ class S3Service implements Closeable {
     @SuppressForbidden(reason = "Need to provide this override to v2 SDK so that path does not default to home path")
     static void setDefaultAwsProfilePath() {
         if (ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.getStringValue().isEmpty()) {
-            SocketAccess.doPrivileged(() -> System.setProperty(ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(), System.getProperty("opensearch.path.conf")));
+            SocketAccess.doPrivileged(
+                () -> System.setProperty(
+                    ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(),
+                    System.getProperty("opensearch.path.conf")
+                )
+            );
         }
         if (ProfileFileSystemSetting.AWS_CONFIG_FILE.getStringValue().isEmpty()) {
-            SocketAccess.doPrivileged(() -> System.setProperty(ProfileFileSystemSetting.AWS_CONFIG_FILE.property(), System.getProperty("opensearch.path.conf")));
+            SocketAccess.doPrivileged(
+                () -> System.setProperty(ProfileFileSystemSetting.AWS_CONFIG_FILE.property(), System.getProperty("opensearch.path.conf"))
+            );
         }
     }
 
@@ -276,17 +282,21 @@ class S3Service implements Closeable {
         if (clientSettings.proxySettings.getType() == ProxySettings.ProxyType.SOCKS) {
             return proxyConfiguration.build();
         }
-        Protocol proxyProtocol = clientSettings.proxySettings.getType() == ProxySettings.ProxyType.DIRECT ? Protocol.HTTP : clientSettings.proxySettings.getType().toProtocol();
+        Protocol proxyProtocol = clientSettings.proxySettings.getType() == ProxySettings.ProxyType.DIRECT
+            ? Protocol.HTTP
+            : clientSettings.proxySettings.getType().toProtocol();
         try {
-            proxyConfiguration = proxyConfiguration.endpoint(new URI(
-                proxyProtocol.toString(),
-                null,
-                clientSettings.proxySettings.getHost(),
-                clientSettings.proxySettings.getPort(),
-                null,
-                null,
-                null
-            ));
+            proxyConfiguration = proxyConfiguration.endpoint(
+                new URI(
+                    proxyProtocol.toString(),
+                    null,
+                    clientSettings.proxySettings.getHost(),
+                    clientSettings.proxySettings.getPort(),
+                    null,
+                    null,
+                    null
+                )
+            );
         } catch (URISyntaxException e) {
             logger.error("Exception during URI construction for specified proxy", e);
             throw new RuntimeException(e);
@@ -297,11 +307,17 @@ class S3Service implements Closeable {
         return proxyConfiguration.build();
     }
 
-    static ClientOverrideConfiguration buildOverrideConfiguration(final S3ClientSettings clientSettings, StatsMetricPublisher statsMetricPublisher) {
+    static ClientOverrideConfiguration buildOverrideConfiguration(
+        final S3ClientSettings clientSettings,
+        StatsMetricPublisher statsMetricPublisher
+    ) {
         ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder();
-//            .metricPublishers(List.of(statsMetricPublisher));
+        // .metricPublishers(List.of(statsMetricPublisher));
         if (Strings.hasLength(clientSettings.signerOverride)) {
-             clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER, AwsRequestSigner.fromSignerName(clientSettings.signerOverride).getSigner());
+            clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(
+                SdkAdvancedClientOption.SIGNER,
+                AwsRequestSigner.fromSignerName(clientSettings.signerOverride).getSigner()
+            );
         }
         RetryPolicy.Builder retryPolicy = RetryPolicy.builder().numRetries(clientSettings.maxRetries);
         if (!clientSettings.throttleRetries) {

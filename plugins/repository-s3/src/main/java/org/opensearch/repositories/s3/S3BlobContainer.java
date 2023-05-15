@@ -352,11 +352,7 @@ class S3BlobContainer extends AbstractBlobContainer {
             .bucket(blobStore.bucket())
             .prefix(keyPath)
             .delimiter("/")
-            .overrideConfiguration(
-                o -> o.addMetricPublisher(
-                    blobStore.getStatsMetricPublisher().listObjectsMetricPublisher
-                )
-            )
+            .overrideConfiguration(o -> o.addMetricPublisher(blobStore.getStatsMetricPublisher().listObjectsMetricPublisher))
             .build();
     }
 
@@ -384,11 +380,7 @@ class S3BlobContainer extends AbstractBlobContainer {
             .contentLength(blobSize)
             .storageClass(blobStore.getStorageClass())
             .acl(blobStore.getCannedACL())
-            .overrideConfiguration(
-                o -> o.addMetricPublisher(
-                    blobStore.getStatsMetricPublisher().putObjectMetricPublisher
-                )
-            );
+            .overrideConfiguration(o -> o.addMetricPublisher(blobStore.getStatsMetricPublisher().putObjectMetricPublisher));
         if (blobStore.serverSideEncryption()) {
             putObjectRequestBuilder = putObjectRequestBuilder.sseCustomerAlgorithm(ServerSideEncryption.AES256.toString());
         }
@@ -430,19 +422,19 @@ class S3BlobContainer extends AbstractBlobContainer {
             .key(blobName)
             .storageClass(blobStore.getStorageClass())
             .acl(blobStore.getCannedACL())
-            .overrideConfiguration(
-                o -> o.addMetricPublisher(
-                    blobStore.getStatsMetricPublisher().multipartUploadMetricCollector
-                )
-            );
+            .overrideConfiguration(o -> o.addMetricPublisher(blobStore.getStatsMetricPublisher().multipartUploadMetricCollector));
 
         if (blobStore.serverSideEncryption()) {
-            createMultipartUploadRequestBuilder = createMultipartUploadRequestBuilder.sseCustomerAlgorithm(ServerSideEncryption.AES256.toString());
+            createMultipartUploadRequestBuilder = createMultipartUploadRequestBuilder.sseCustomerAlgorithm(
+                ServerSideEncryption.AES256.toString()
+            );
         }
 
         CreateMultipartUploadRequest createMultipartUploadRequest = createMultipartUploadRequestBuilder.build();
         try (AmazonS3Reference clientReference = blobStore.clientReference()) {
-            uploadId.set(SocketAccess.doPrivileged(() -> clientReference.get().createMultipartUpload(createMultipartUploadRequest).uploadId()));
+            uploadId.set(
+                SocketAccess.doPrivileged(() -> clientReference.get().createMultipartUpload(createMultipartUploadRequest).uploadId())
+            );
             if (Strings.isEmpty(uploadId.get())) {
                 throw new IOException("Failed to initialize multipart upload " + blobName);
             }
@@ -457,17 +449,14 @@ class S3BlobContainer extends AbstractBlobContainer {
                     .uploadId(uploadId.get())
                     .partNumber(i)
                     .contentLength((i < nbParts) ? partSize : lastPartSize)
-                    .overrideConfiguration(
-                        o -> o.addMetricPublisher(
-                            blobStore.getStatsMetricPublisher().multipartUploadMetricCollector
-                        )
-                    )
+                    .overrideConfiguration(o -> o.addMetricPublisher(blobStore.getStatsMetricPublisher().multipartUploadMetricCollector))
                     .build();
 
                 bytesCount += uploadPartRequest.contentLength();
 
                 final UploadPartResponse uploadResponse = SocketAccess.doPrivileged(
-                    () -> clientReference.get().uploadPart(uploadPartRequest, RequestBody.fromInputStream(input, uploadPartRequest.contentLength()))
+                    () -> clientReference.get()
+                        .uploadPart(uploadPartRequest, RequestBody.fromInputStream(input, uploadPartRequest.contentLength()))
                 );
                 parts.add(CompletedPart.builder().partNumber(uploadPartRequest.partNumber()).eTag(uploadResponse.eTag()).build());
             }
@@ -483,11 +472,7 @@ class S3BlobContainer extends AbstractBlobContainer {
                 .key(blobName)
                 .uploadId(uploadId.get())
                 .multipartUpload(CompletedMultipartUpload.builder().parts(parts).build())
-                .overrideConfiguration(
-                    o -> o.addMetricPublisher(
-                        blobStore.getStatsMetricPublisher().multipartUploadMetricCollector
-                    )
-                )
+                .overrideConfiguration(o -> o.addMetricPublisher(blobStore.getStatsMetricPublisher().multipartUploadMetricCollector))
                 .build();
 
             SocketAccess.doPrivilegedVoid(() -> clientReference.get().completeMultipartUpload(completeMultipartUploadRequest));

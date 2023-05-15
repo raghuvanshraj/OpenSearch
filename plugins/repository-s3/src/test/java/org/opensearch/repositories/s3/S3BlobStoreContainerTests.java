@@ -137,7 +137,9 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
 
         final ArgumentCaptor<PutObjectRequest> putObjectRequestArgumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         final ArgumentCaptor<RequestBody> requestBodyArgumentCaptor = ArgumentCaptor.forClass(RequestBody.class);
-        when(client.putObject(putObjectRequestArgumentCaptor.capture(), requestBodyArgumentCaptor.capture())).thenReturn(PutObjectResponse.builder().build());
+        when(client.putObject(putObjectRequestArgumentCaptor.capture(), requestBodyArgumentCaptor.capture())).thenReturn(
+            PutObjectResponse.builder().build()
+        );
 
         final ByteArrayInputStream inputStream = new ByteArrayInputStream(new byte[blobSize]);
         blobContainer.executeSingleUpload(blobStore, blobName, inputStream, blobSize);
@@ -213,8 +215,12 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
         final AmazonS3Reference clientReference = new AmazonS3Reference(client);
         when(blobStore.clientReference()).thenReturn(clientReference);
 
-        final ArgumentCaptor<CreateMultipartUploadRequest> createMultipartUploadRequestArgumentCaptor = ArgumentCaptor.forClass(CreateMultipartUploadRequest.class);
-        final CreateMultipartUploadResponse createMultipartUploadResponse = CreateMultipartUploadResponse.builder().uploadId(randomAlphaOfLength(10)).build();
+        final ArgumentCaptor<CreateMultipartUploadRequest> createMultipartUploadRequestArgumentCaptor = ArgumentCaptor.forClass(
+            CreateMultipartUploadRequest.class
+        );
+        final CreateMultipartUploadResponse createMultipartUploadResponse = CreateMultipartUploadResponse.builder()
+            .uploadId(randomAlphaOfLength(10))
+            .build();
         when(client.createMultipartUpload(createMultipartUploadRequestArgumentCaptor.capture())).thenReturn(createMultipartUploadResponse);
 
         final ArgumentCaptor<UploadPartRequest> uploadPartRequestArgumentCaptor = ArgumentCaptor.forClass(UploadPartRequest.class);
@@ -228,16 +234,22 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
             totalBytes += partSize;
         } while (totalBytes < blobSize);
 
-        when(client.uploadPart(uploadPartRequestArgumentCaptor.capture(), requestBodyArgumentCaptor.capture())).thenAnswer(invocationOnMock -> {
-            final UploadPartRequest request = (UploadPartRequest) invocationOnMock.getArguments()[0];
-            final UploadPartResponse response = UploadPartResponse.builder().eTag(expectedEtags.get(request.partNumber() - 1)).build();
-            // TODO do we need to set part number here?
-//            response.setPartNumber(request.getPartNumber());
-            return response;
-        });
+        when(client.uploadPart(uploadPartRequestArgumentCaptor.capture(), requestBodyArgumentCaptor.capture())).thenAnswer(
+            invocationOnMock -> {
+                final UploadPartRequest request = (UploadPartRequest) invocationOnMock.getArguments()[0];
+                final UploadPartResponse response = UploadPartResponse.builder().eTag(expectedEtags.get(request.partNumber() - 1)).build();
+                // TODO do we need to set part number here?
+                // response.setPartNumber(request.getPartNumber());
+                return response;
+            }
+        );
 
-        final ArgumentCaptor<CompleteMultipartUploadRequest> completeMultipartUploadRequestArgumentCaptor = ArgumentCaptor.forClass(CompleteMultipartUploadRequest.class);
-        when(client.completeMultipartUpload(completeMultipartUploadRequestArgumentCaptor.capture())).thenReturn(CompleteMultipartUploadResponse.builder().build());
+        final ArgumentCaptor<CompleteMultipartUploadRequest> completeMultipartUploadRequestArgumentCaptor = ArgumentCaptor.forClass(
+            CompleteMultipartUploadRequest.class
+        );
+        when(client.completeMultipartUpload(completeMultipartUploadRequestArgumentCaptor.capture())).thenReturn(
+            CompleteMultipartUploadResponse.builder().build()
+        );
 
         final ByteArrayInputStream inputStream = new ByteArrayInputStream(new byte[0]);
         final S3BlobContainer blobContainer = new S3BlobContainer(blobPath, blobStore);
@@ -278,7 +290,11 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
         assertEquals(blobPath.buildAsString() + blobName, completeMultipartUploadRequest.key());
         assertEquals(createMultipartUploadResponse.uploadId(), completeMultipartUploadRequest.uploadId());
 
-        final List<String> actualETags = completeMultipartUploadRequest.multipartUpload().parts().stream().map(CompletedPart::eTag).collect(Collectors.toList());
+        final List<String> actualETags = completeMultipartUploadRequest.multipartUpload()
+            .parts()
+            .stream()
+            .map(CompletedPart::eTag)
+            .collect(Collectors.toList());
         assertEquals(expectedEtags, actualETags);
     }
 
@@ -317,21 +333,25 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
             when(client.createMultipartUpload(any(CreateMultipartUploadRequest.class))).thenThrow(exceptions.get(stage));
 
         } else if (stage == 1) {
-            final CreateMultipartUploadResponse createMultipartUploadResponse = CreateMultipartUploadResponse.builder().uploadId(uploadId).build();
+            final CreateMultipartUploadResponse createMultipartUploadResponse = CreateMultipartUploadResponse.builder()
+                .uploadId(uploadId)
+                .build();
             when(client.createMultipartUpload(any(CreateMultipartUploadRequest.class))).thenReturn(createMultipartUploadResponse);
 
             // Fail the upload part request
             when(client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class))).thenThrow(exceptions.get(stage));
 
         } else {
-            final CreateMultipartUploadResponse createMultipartUploadResponse = CreateMultipartUploadResponse.builder().uploadId(uploadId).build();
+            final CreateMultipartUploadResponse createMultipartUploadResponse = CreateMultipartUploadResponse.builder()
+                .uploadId(uploadId)
+                .build();
             when(client.createMultipartUpload(any(CreateMultipartUploadRequest.class))).thenReturn(createMultipartUploadResponse);
 
             when(client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class))).thenAnswer(invocationOnMock -> {
                 final UploadPartRequest request = (UploadPartRequest) invocationOnMock.getArguments()[0];
                 final UploadPartResponse response = UploadPartResponse.builder().eTag(randomAlphaOfLength(20)).build();
                 // TODO review this
-//                response.setPartNumber(request.getPartNumber());
+                // response.setPartNumber(request.getPartNumber());
                 return response;
             });
 

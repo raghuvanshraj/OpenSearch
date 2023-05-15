@@ -291,10 +291,12 @@ public class S3ClientSettingsTests extends OpenSearchTestCase implements ConfigP
         assertThat(settings.get("other").region, is(region));
         try (
             S3Service s3Service = new S3Service(configPath());
-            S3Client other = SocketAccess.doPrivileged(() -> s3Service.buildClient(settings.get("other"), new StatsMetricPublisher()).client());
+            S3Client other = SocketAccess.doPrivileged(
+                () -> s3Service.buildClient(settings.get("other"), new StatsMetricPublisher()).client()
+            );
         ) {
             // TODO signer override setting in prod code and relevant testing is pending
-//            assertThat(other.getSignerRegionOverride(), is(region));
+            // assertThat(other.getSignerRegionOverride(), is(region));
         }
     }
 
@@ -307,10 +309,10 @@ public class S3ClientSettingsTests extends OpenSearchTestCase implements ConfigP
         assertThat(settings.get("default").region, is("us-east-1"));
         assertThat(settings.get("other").signerOverride, is(signerOverride));
         // TODO uncomment after signer override setting is figured out
-//        ClientConfiguration defaultConfiguration = S3Service.buildConfiguration(settings.get("default"));
-//        assertThat(defaultConfiguration.getSignerOverride(), nullValue());
-//        ClientConfiguration configuration = S3Service.buildConfiguration(settings.get("other"));
-//        assertThat(configuration.getSignerOverride(), is(signerOverride));
+        // ClientConfiguration defaultConfiguration = S3Service.buildConfiguration(settings.get("default"));
+        // assertThat(defaultConfiguration.getSignerOverride(), nullValue());
+        // ClientConfiguration configuration = S3Service.buildConfiguration(settings.get("other"));
+        // assertThat(configuration.getSignerOverride(), is(signerOverride));
     }
 
     public void testSetProxySettings() throws Exception {

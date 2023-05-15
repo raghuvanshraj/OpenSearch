@@ -23,9 +23,15 @@ public class StatsMetricPublisher {
     public MetricPublisher listObjectsMetricPublisher = new MetricPublisher() {
         @Override
         public void publish(MetricCollection metricCollection) {
-            stats.listCount.addAndGet(metricCollection.children().stream().filter(
-                metricRecords -> metricRecords.name().equals("ApiCallAttempt") && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
-            ).count());
+            stats.listCount.addAndGet(
+                metricCollection.children()
+                    .stream()
+                    .filter(
+                        metricRecords -> metricRecords.name().equals("ApiCallAttempt")
+                            && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
+                    )
+                    .count()
+            );
         }
 
         @Override
@@ -35,9 +41,15 @@ public class StatsMetricPublisher {
     public MetricPublisher getObjectMetricPublisher = new MetricPublisher() {
         @Override
         public void publish(MetricCollection metricCollection) {
-            stats.getCount.addAndGet(metricCollection.children().stream().filter(
-                metricRecords -> metricRecords.name().equals("ApiCallAttempt") && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
-            ).count());
+            stats.getCount.addAndGet(
+                metricCollection.children()
+                    .stream()
+                    .filter(
+                        metricRecords -> metricRecords.name().equals("ApiCallAttempt")
+                            && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
+                    )
+                    .count()
+            );
         }
 
         @Override
@@ -47,9 +59,15 @@ public class StatsMetricPublisher {
     public MetricPublisher putObjectMetricPublisher = new MetricPublisher() {
         @Override
         public void publish(MetricCollection metricCollection) {
-            stats.putCount.addAndGet(metricCollection.children().stream().filter(
-                metricRecords -> metricRecords.name().equals("ApiCallAttempt") && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
-            ).count());
+            stats.putCount.addAndGet(
+                metricCollection.children()
+                    .stream()
+                    .filter(
+                        metricRecords -> metricRecords.name().equals("ApiCallAttempt")
+                            && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
+                    )
+                    .count()
+            );
         }
 
         @Override
@@ -59,9 +77,15 @@ public class StatsMetricPublisher {
     public MetricPublisher multipartUploadMetricCollector = new MetricPublisher() {
         @Override
         public void publish(MetricCollection metricCollection) {
-            stats.postCount.addAndGet(metricCollection.children().stream().filter(
-                metricRecords -> metricRecords.name().equals("ApiCallAttempt") && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
-            ).count());
+            stats.postCount.addAndGet(
+                metricCollection.children()
+                    .stream()
+                    .filter(
+                        metricRecords -> metricRecords.name().equals("ApiCallAttempt")
+                            && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
+                    )
+                    .count()
+            );
         }
 
         @Override
