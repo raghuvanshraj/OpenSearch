@@ -182,7 +182,15 @@ class S3BlobContainer extends AbstractBlobContainer {
         try (AmazonS3Reference clientReference = blobStore.clientReference()) {
             ListObjectsV2Iterable listObjectsIterable = SocketAccess.doPrivileged(
                 () -> clientReference.get()
-                    .listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(blobStore.bucket()).prefix(keyPath).build())
+                    .listObjectsV2Paginator(
+                        ListObjectsV2Request.builder()
+                            .bucket(blobStore.bucket())
+                            .prefix(keyPath)
+                            .overrideConfiguration(
+                                o -> o.addMetricPublisher(blobStore.getStatsMetricPublisher().listObjectsMetricPublisher)
+                            )
+                            .build()
+                    )
             );
 
             Iterator<ListObjectsV2Response> listObjectsResponseIterator = listObjectsIterable.iterator();
@@ -340,7 +348,16 @@ class S3BlobContainer extends AbstractBlobContainer {
     }
 
     private ListObjectsV2Request listObjectsRequest(String keyPath) {
-        return ListObjectsV2Request.builder().bucket(blobStore.bucket()).prefix(keyPath).delimiter("/").build();
+        return ListObjectsV2Request.builder()
+            .bucket(blobStore.bucket())
+            .prefix(keyPath)
+            .delimiter("/")
+            .overrideConfiguration(
+                o -> o.addMetricPublisher(
+                    blobStore.getStatsMetricPublisher().listObjectsMetricPublisher
+                )
+            )
+            .build();
     }
 
     private String buildKey(String blobName) {
@@ -366,7 +383,12 @@ class S3BlobContainer extends AbstractBlobContainer {
             .key(blobName)
             .contentLength(blobSize)
             .storageClass(blobStore.getStorageClass())
-            .acl(blobStore.getCannedACL());
+            .acl(blobStore.getCannedACL())
+            .overrideConfiguration(
+                o -> o.addMetricPublisher(
+                    blobStore.getStatsMetricPublisher().putObjectMetricPublisher
+                )
+            );
         if (blobStore.serverSideEncryption()) {
             putObjectRequestBuilder = putObjectRequestBuilder.sseCustomerAlgorithm(ServerSideEncryption.AES256.toString());
         }
@@ -407,7 +429,12 @@ class S3BlobContainer extends AbstractBlobContainer {
             .bucket(bucketName)
             .key(blobName)
             .storageClass(blobStore.getStorageClass())
-            .acl(blobStore.getCannedACL());
+            .acl(blobStore.getCannedACL())
+            .overrideConfiguration(
+                o -> o.addMetricPublisher(
+                    blobStore.getStatsMetricPublisher().multipartUploadMetricCollector
+                )
+            );
 
         if (blobStore.serverSideEncryption()) {
             createMultipartUploadRequestBuilder = createMultipartUploadRequestBuilder.sseCustomerAlgorithm(ServerSideEncryption.AES256.toString());
@@ -430,6 +457,11 @@ class S3BlobContainer extends AbstractBlobContainer {
                     .uploadId(uploadId.get())
                     .partNumber(i)
                     .contentLength((i < nbParts) ? partSize : lastPartSize)
+                    .overrideConfiguration(
+                        o -> o.addMetricPublisher(
+                            blobStore.getStatsMetricPublisher().multipartUploadMetricCollector
+                        )
+                    )
                     .build();
 
                 bytesCount += uploadPartRequest.contentLength();
@@ -451,6 +483,11 @@ class S3BlobContainer extends AbstractBlobContainer {
                 .key(blobName)
                 .uploadId(uploadId.get())
                 .multipartUpload(CompletedMultipartUpload.builder().parts(parts).build())
+                .overrideConfiguration(
+                    o -> o.addMetricPublisher(
+                        blobStore.getStatsMetricPublisher().multipartUploadMetricCollector
+                    )
+                )
                 .build();
 
             SocketAccess.doPrivilegedVoid(() -> clientReference.get().completeMultipartUpload(completeMultipartUploadRequest));

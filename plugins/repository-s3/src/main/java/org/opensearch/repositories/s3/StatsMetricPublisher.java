@@ -8,7 +8,7 @@
 
 package org.opensearch.repositories.s3;
 
-import software.amazon.awssdk.core.metrics.CoreMetric;
+import software.amazon.awssdk.http.HttpMetric;
 import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricPublisher;
 
@@ -16,41 +16,57 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class StatsMetricPublisher implements MetricPublisher {
-
-    private static final String LIST_OBJECTS_V2_OPERATION = "ListObjectsV2";
-    private static final String GET_OBJECT_OPERATION = "GetObject";
-    private static final String PUT_OBJECT_OPERATION = "PutObject";
-    private static final String CREATE_MULTIPART_UPLOAD_OPERATION = "CreateMultipartUpload";
-    private static final String UPLOAD_PART_OPERATION = "UploadPart";
-    private static final String COMPLETE_MULTIPART_UPLOAD_OPERATION = "CompleteMultipartUpload";
+public class StatsMetricPublisher {
 
     private final Stats stats = new Stats();
 
-    @Override
-    public void publish(MetricCollection metricCollection) {
-        // ListObjectsV2
-        stats.listCount.addAndGet(metricCollection.metricValues(CoreMetric.OPERATION_NAME).stream().filter(operation -> operation.equals(LIST_OBJECTS_V2_OPERATION)).count());
+    public MetricPublisher listObjectsMetricPublisher = new MetricPublisher() {
+        @Override
+        public void publish(MetricCollection metricCollection) {
+            stats.listCount.addAndGet(metricCollection.children().stream().filter(
+                metricRecords -> metricRecords.name().equals("ApiCallAttempt") && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
+            ).count());
+        }
 
-        // GetObject
-        stats.getCount.addAndGet(metricCollection.metricValues(CoreMetric.OPERATION_NAME).stream().filter(operation -> operation.equals(GET_OBJECT_OPERATION)).count());
+        @Override
+        public void close() {}
+    };
 
-        // PutObject
-        stats.putCount.addAndGet(metricCollection.metricValues(CoreMetric.OPERATION_NAME).stream().filter(operation -> operation.equals(PUT_OBJECT_OPERATION)).count());
+    public MetricPublisher getObjectMetricPublisher = new MetricPublisher() {
+        @Override
+        public void publish(MetricCollection metricCollection) {
+            stats.getCount.addAndGet(metricCollection.children().stream().filter(
+                metricRecords -> metricRecords.name().equals("ApiCallAttempt") && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
+            ).count());
+        }
 
-        // Multipart Uploads
-        stats.postCount.addAndGet(
-            metricCollection.metricValues(CoreMetric.OPERATION_NAME)
-                .stream().filter(
-                    operation -> operation.equals(CREATE_MULTIPART_UPLOAD_OPERATION) ||
-                        operation.equals(UPLOAD_PART_OPERATION) ||
-                        operation.equals(COMPLETE_MULTIPART_UPLOAD_OPERATION)
-                ).count()
-        );
-    }
+        @Override
+        public void close() {}
+    };
 
-    @Override
-    public void close() {}
+    public MetricPublisher putObjectMetricPublisher = new MetricPublisher() {
+        @Override
+        public void publish(MetricCollection metricCollection) {
+            stats.putCount.addAndGet(metricCollection.children().stream().filter(
+                metricRecords -> metricRecords.name().equals("ApiCallAttempt") && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
+            ).count());
+        }
+
+        @Override
+        public void close() {}
+    };
+
+    public MetricPublisher multipartUploadMetricCollector = new MetricPublisher() {
+        @Override
+        public void publish(MetricCollection metricCollection) {
+            stats.postCount.addAndGet(metricCollection.children().stream().filter(
+                metricRecords -> metricRecords.name().equals("ApiCallAttempt") && !metricRecords.metricValues(HttpMetric.HTTP_STATUS_CODE).isEmpty()
+            ).count());
+        }
+
+        @Override
+        public void close() {}
+    };
 
     public Stats getStats() {
         return stats;

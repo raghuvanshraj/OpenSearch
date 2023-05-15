@@ -133,6 +133,10 @@ class S3BlobStore implements BlobStore {
         return storageClass;
     }
 
+    public StatsMetricPublisher getStatsMetricPublisher() {
+        return statsMetricPublisher;
+    }
+
     public static StorageClass initStorageClass(String storageClass) {
         if ((storageClass == null) || storageClass.equals("")) {
             return StorageClass.STANDARD;

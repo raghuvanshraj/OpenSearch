@@ -298,8 +298,8 @@ class S3Service implements Closeable {
     }
 
     static ClientOverrideConfiguration buildOverrideConfiguration(final S3ClientSettings clientSettings, StatsMetricPublisher statsMetricPublisher) {
-        ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder()
-            .metricPublishers(List.of(statsMetricPublisher));
+        ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder();
+//            .metricPublishers(List.of(statsMetricPublisher));
         if (Strings.hasLength(clientSettings.signerOverride)) {
              clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(SdkAdvancedClientOption.SIGNER, AwsRequestSigner.fromSignerName(clientSettings.signerOverride).getSigner());
         }
