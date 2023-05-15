@@ -136,7 +136,7 @@ class S3Service implements Closeable {
      * Attempts to retrieve a client by its repository metadata and settings from the cache.
      * If the client does not exist it will be created.
      */
-    public AmazonS3Reference client(RepositoryMetadata repositoryMetadata, StatsMetricPublisher statsMetricPublisher) {
+    public AmazonS3Reference client(RepositoryMetadata repositoryMetadata) {
         final S3ClientSettings clientSettings = settings(repositoryMetadata);
         {
             final AmazonS3Reference clientReference = clientsCache.get(clientSettings);
@@ -149,7 +149,7 @@ class S3Service implements Closeable {
             if (existing != null && existing.tryIncRef()) {
                 return existing;
             }
-            final AmazonS3Reference clientReference = new AmazonS3Reference(buildClient(clientSettings, statsMetricPublisher));
+            final AmazonS3Reference clientReference = new AmazonS3Reference(buildClient(clientSettings));
             clientReference.incRef();
             clientsCache = MapBuilder.newMapBuilder(clientsCache).put(clientSettings, clientReference).immutableMap();
             return clientReference;
@@ -192,14 +192,14 @@ class S3Service implements Closeable {
     }
 
     // proxy for testing
-    AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings, StatsMetricPublisher statsMetricPublisher) {
+    AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings) {
         setDefaultAwsProfilePath();
         final S3ClientBuilder builder = S3Client.builder();
 
         final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
         builder.credentialsProvider(credentials);
         builder.httpClientBuilder(buildHttpClient(clientSettings));
-        builder.overrideConfiguration(buildOverrideConfiguration(clientSettings, statsMetricPublisher));
+        builder.overrideConfiguration(buildOverrideConfiguration(clientSettings));
 
         String endpoint = Strings.hasLength(clientSettings.endpoint) ? clientSettings.endpoint : DEFAULT_S3_ENDPOINT;
         if ((endpoint.startsWith("http://") || endpoint.startsWith("https://")) == false) {
@@ -308,11 +308,9 @@ class S3Service implements Closeable {
     }
 
     static ClientOverrideConfiguration buildOverrideConfiguration(
-        final S3ClientSettings clientSettings,
-        StatsMetricPublisher statsMetricPublisher
+        final S3ClientSettings clientSettings
     ) {
         ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder();
-        // .metricPublishers(List.of(statsMetricPublisher));
         if (Strings.hasLength(clientSettings.signerOverride)) {
             clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(
                 SdkAdvancedClientOption.SIGNER,

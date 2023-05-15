@@ -56,11 +56,11 @@ public class S3ServiceTests extends OpenSearchTestCase implements ConfigPathSupp
         final S3ClientSettings clientSettings = s3Service.settings(metadata2);
         final S3ClientSettings otherClientSettings = s3Service.settings(metadata2);
         assertSame(clientSettings, otherClientSettings);
-        final AmazonS3Reference reference = SocketAccess.doPrivileged(() -> s3Service.client(metadata1, new StatsMetricPublisher()));
+        final AmazonS3Reference reference = SocketAccess.doPrivileged(() -> s3Service.client(metadata1));
         reference.close();
         s3Service.close();
         final AmazonS3Reference referenceReloaded = SocketAccess.doPrivileged(
-            () -> s3Service.client(metadata1, new StatsMetricPublisher())
+            () -> s3Service.client(metadata1)
         );
         assertNotSame(referenceReloaded, reference);
         referenceReloaded.close();
@@ -84,11 +84,11 @@ public class S3ServiceTests extends OpenSearchTestCase implements ConfigPathSupp
         final S3ClientSettings clientSettings = s3Service.settings(metadata2);
         final S3ClientSettings otherClientSettings = s3Service.settings(metadata2);
         assertSame(clientSettings, otherClientSettings);
-        final AmazonS3Reference reference = SocketAccess.doPrivileged(() -> s3Service.client(metadata1, new StatsMetricPublisher()));
+        final AmazonS3Reference reference = SocketAccess.doPrivileged(() -> s3Service.client(metadata1));
         reference.close();
         s3Service.close();
         final AmazonS3Reference referenceReloaded = SocketAccess.doPrivileged(
-            () -> s3Service.client(metadata1, new StatsMetricPublisher())
+            () -> s3Service.client(metadata1)
         );
         assertNotSame(referenceReloaded, reference);
         referenceReloaded.close();

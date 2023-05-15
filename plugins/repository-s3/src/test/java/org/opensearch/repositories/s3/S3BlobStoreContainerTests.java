@@ -117,6 +117,7 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
         final S3BlobStore blobStore = mock(S3BlobStore.class);
         when(blobStore.bucket()).thenReturn(bucketName);
         when(blobStore.bufferSizeInBytes()).thenReturn((long) bufferSize);
+        when(blobStore.getStatsMetricPublisher()).thenReturn(new StatsMetricPublisher());
 
         final S3BlobContainer blobContainer = new S3BlobContainer(blobPath, blobStore);
 
@@ -198,6 +199,7 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
 
         final S3BlobStore blobStore = mock(S3BlobStore.class);
         when(blobStore.bucket()).thenReturn(bucketName);
+        when(blobStore.getStatsMetricPublisher()).thenReturn(new StatsMetricPublisher());
         when(blobStore.bufferSizeInBytes()).thenReturn(bufferSize);
 
         final boolean serverSideEncryption = randomBoolean();
@@ -310,6 +312,7 @@ public class S3BlobStoreContainerTests extends OpenSearchTestCase {
         when(blobStore.bucket()).thenReturn(bucketName);
         when(blobStore.bufferSizeInBytes()).thenReturn(bufferSize);
         when(blobStore.getStorageClass()).thenReturn(randomFrom(StorageClass.values()));
+        when(blobStore.getStatsMetricPublisher()).thenReturn(new StatsMetricPublisher());
 
         final S3Client client = mock(S3Client.class);
         final AmazonS3Reference clientReference = new AmazonS3Reference(client);

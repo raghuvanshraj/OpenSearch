@@ -292,7 +292,7 @@ public class S3ClientSettingsTests extends OpenSearchTestCase implements ConfigP
         try (
             S3Service s3Service = new S3Service(configPath());
             S3Client other = SocketAccess.doPrivileged(
-                () -> s3Service.buildClient(settings.get("other"), new StatsMetricPublisher()).client()
+                () -> s3Service.buildClient(settings.get("other")).client()
             );
         ) {
             // TODO signer override setting in prod code and relevant testing is pending

@@ -115,6 +115,7 @@ public class S3RetryingInputStreamTests extends OpenSearchTestCase {
         when(clientReference.get()).thenReturn(client);
         final S3BlobStore blobStore = mock(S3BlobStore.class);
         when(blobStore.clientReference()).thenReturn(clientReference);
+        when(blobStore.getStatsMetricPublisher()).thenReturn(new StatsMetricPublisher());
 
         return new S3RetryingInputStream(blobStore, "_blob", start, end);
     }

@@ -364,8 +364,7 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
         }
 
         final ClientOverrideConfiguration clientOverrideConfiguration = S3Service.buildOverrideConfiguration(
-            clientSettings,
-            new StatsMetricPublisher()
+            clientSettings
         );
 
         // TODO not supported in v2
