@@ -111,14 +111,14 @@ dependencies {
   api 'org.apache.rat:apache-rat:0.15'
   api 'commons-io:commons-io:2.11.0'
   api "net.java.dev.jna:jna:5.13.0"
-  api 'gradle.plugin.com.github.johnrengelman:shadow:7.1.2'
+  api 'gradle.plugin.com.github.johnrengelman:shadow:8.0.0'
   api 'org.jdom:jdom2:2.0.6.1'
   api "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${props.getProperty('kotlin')}"
   api 'de.thetaphi:forbiddenapis:3.5.1'
   api 'com.avast.gradle:gradle-docker-compose-plugin:0.16.12'
   api "org.yaml:snakeyaml:${props.getProperty('snakeyaml')}"
   api 'org.apache.maven:maven-model:3.9.1'
-  api 'com.networknt:json-schema-validator:1.0.78'
+  api 'com.networknt:json-schema-validator:1.0.81'
   api "com.fasterxml.jackson.core:jackson-databind:${props.getProperty('jackson_databind')}"
 
   testFixturesApi "junit:junit:${props.getProperty('junit')}"

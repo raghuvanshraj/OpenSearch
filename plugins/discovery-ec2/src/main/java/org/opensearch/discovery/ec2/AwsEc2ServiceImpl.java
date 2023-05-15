@@ -33,7 +33,6 @@
 package org.opensearch.discovery.ec2;
 
 import java.net.URI;
-import java.time.Duration;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import org.apache.logging.log4j.LogManager;
@@ -41,6 +40,7 @@ import org.apache.logging.log4j.Logger;
 import org.opensearch.OpenSearchException;
 import org.opensearch.common.Strings;
 import org.opensearch.common.util.LazyInitializable;
+import org.opensearch.common.SuppressForbidden;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
@@ -48,11 +48,13 @@ import software.amazon.awssdk.http.apache.ProxyConfiguration;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.Ec2ClientBuilder;
 import software.amazon.awssdk.core.retry.RetryPolicy;
+
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.profiles.ProfileFileSystemSetting;
 
 class AwsEc2ServiceImpl implements AwsEc2Service {
-
     private static final Logger logger = LogManager.getLogger(AwsEc2ServiceImpl.class);
 
     private final AtomicReference<LazyInitializable<AmazonEc2ClientReference, OpenSearchException>> lazyClientReference =
@@ -60,21 +62,34 @@ class AwsEc2ServiceImpl implements AwsEc2Service {
 
     private Ec2Client buildClient(Ec2ClientSettings clientSettings) {
         final AwsCredentialsProvider awsCredentialsProvider = buildCredentials(logger, clientSettings);
-        final ApacheHttpClient.Builder clientBuilder = buildHttpClient(logger, clientSettings);
         final ClientOverrideConfiguration overrideConfiguration = buildOverrideConfiguration(logger, clientSettings);
-        return buildClient(awsCredentialsProvider, clientBuilder, overrideConfiguration, clientSettings.endpoint);
+        final ProxyConfiguration proxyConfiguration = buildProxyConfiguration(logger, clientSettings);
+        return buildClient(
+            awsCredentialsProvider,
+            proxyConfiguration,
+            overrideConfiguration,
+            clientSettings.endpoint,
+            clientSettings.readTimeoutMillis
+        );
     }
 
     // proxy for testing
     protected Ec2Client buildClient(
         AwsCredentialsProvider awsCredentialsProvider,
-        ApacheHttpClient.Builder apacheHttpClientBuilder,
+        ProxyConfiguration proxyConfiguration,
         ClientOverrideConfiguration overrideConfiguration,
-        String endpoint
+        String endpoint,
+        long readTimeoutMillis
     ) {
+        SocketAccess.doPrivilegedVoid(AwsEc2ServiceImpl::setDefaultAwsProfilePath);
+
+        ApacheHttpClient.Builder clientBuilder = ApacheHttpClient.builder()
+            .proxyConfiguration(proxyConfiguration)
+            .socketTimeout(Duration.ofMillis(readTimeoutMillis));
+
         Ec2ClientBuilder builder = Ec2Client.builder()
             .overrideConfiguration(overrideConfiguration)
-            .httpClientBuilder(apacheHttpClientBuilder)
+            .httpClientBuilder(clientBuilder)
             .credentialsProvider(awsCredentialsProvider);
 
         if (Strings.hasText(endpoint)) {
@@ -95,13 +110,6 @@ class AwsEc2ServiceImpl implements AwsEc2Service {
         } else {
             return ProxyConfiguration.builder().build();
         }
-    }
-
-    // pkg private for tests
-    static ApacheHttpClient.Builder buildHttpClient(Logger logger, Ec2ClientSettings clientSettings) {
-        return ApacheHttpClient.builder()
-            .proxyConfiguration(buildProxyConfiguration(logger, clientSettings))
-            .socketTimeout(Duration.ofMillis(clientSettings.readTimeoutMillis));
     }
 
     static ClientOverrideConfiguration buildOverrideConfiguration(Logger logger, Ec2ClientSettings clientSettings) {
@@ -159,6 +167,17 @@ class AwsEc2ServiceImpl implements AwsEc2Service {
         if (clientReference != null) {
             clientReference.getOrCompute().get().close();
             clientReference.reset();
+        }
+    }
+
+    // AWS v2 SDK load a default profile from $user_home, which is restricted. Use OpenSearch configuration path.
+    @SuppressForbidden(reason = "Prevent AWS SDK v2 from using ~/.aws/config and ~/.aws/credentials.")
+    static void setDefaultAwsProfilePath() {
+        if (ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.getStringValue().isEmpty()) {
+            System.setProperty(ProfileFileSystemSetting.AWS_SHARED_CREDENTIALS_FILE.property(), System.getProperty("opensearch.path.conf"));
+        }
+        if (ProfileFileSystemSetting.AWS_CONFIG_FILE.getStringValue().isEmpty()) {
+            System.setProperty(ProfileFileSystemSetting.AWS_CONFIG_FILE.property(), System.getProperty("opensearch.path.conf"));
         }
     }
 }

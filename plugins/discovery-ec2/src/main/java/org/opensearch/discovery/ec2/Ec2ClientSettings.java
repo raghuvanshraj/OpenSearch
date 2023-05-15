@@ -201,7 +201,6 @@ final class Ec2ClientSettings {
         }
     }
 
-    // pkg private for tests
     /** Parse settings for a single client. */
     static Ec2ClientSettings getClientSettings(Settings settings) {
         final AwsCredentials credentials = loadCredentials(settings);
@@ -221,5 +220,4 @@ final class Ec2ClientSettings {
             );
         }
     }
-
 }

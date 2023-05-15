@@ -45,6 +45,7 @@ import org.opensearch.plugins.DiscoveryPlugin;
 import org.opensearch.plugins.Plugin;
 import org.opensearch.plugins.ReloadablePlugin;
 import org.opensearch.transport.TransportService;
+import software.amazon.awssdk.core.SdkSystemSetting;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -73,8 +74,6 @@ public class Ec2DiscoveryPlugin extends Plugin implements DiscoveryPlugin, Reloa
         // The ClientConfiguration class requires RuntimePermission getClassLoader
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
             try {
-                // kick jackson to do some static caching of declared members info
-                // JacksonUtils.jsonNodeOf("{}");
                 // ClientConfiguration clinit has some classloader problems
                 // TODO: fix that
                 Class.forName("software.amazon.awssdk.http.apache.ApacheHttpClient");
@@ -141,9 +140,9 @@ public class Ec2DiscoveryPlugin extends Plugin implements DiscoveryPlugin, Reloa
         final Settings.Builder builder = Settings.builder();
 
         // Adds a node attribute for the ec2 availability zone
-        // final String azMetadataUrl = EC2MetadataUtils.getHostAddressForEC2MetadataService()
-        // + "/latest/meta-data/placement/availability-zone";
-        // builder.put(getAvailabilityZoneNodeAttributes(settings, azMetadataUrl));
+        final String azMetadataUrl = SdkSystemSetting.AWS_EC2_METADATA_SERVICE_ENDPOINT.getStringValue()
+            + "/latest/meta-data/placement/availability-zone";
+        builder.put(getAvailabilityZoneNodeAttributes(settings, azMetadataUrl));
         return builder.build();
     }
 
@@ -159,6 +158,9 @@ public class Ec2DiscoveryPlugin extends Plugin implements DiscoveryPlugin, Reloa
         final URLConnection urlConnection;
         try {
             url = new URL(azMetadataUrl);
+            // Obtain the current EC2 instance availability zone from IMDS.
+            // Same as curl http://169.254.169.254/latest/meta-data/placement/availability-zone/.
+            // TODO: use EC2MetadataUtils::getAvailabilityZone directly which is a similar implementation
             logger.debug("obtaining ec2 [placement/availability-zone] from ec2 meta-data url {}", url);
             urlConnection = SocketAccess.doPrivilegedIOException(url::openConnection);
             urlConnection.setConnectTimeout(2000);
