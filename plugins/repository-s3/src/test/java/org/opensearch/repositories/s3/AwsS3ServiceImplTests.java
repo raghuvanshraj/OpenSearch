@@ -363,9 +363,7 @@ public class AwsS3ServiceImplTests extends OpenSearchTestCase implements ConfigP
             assertThat(proxyConfiguration.password(), is(expectedProxyPassword));
         }
 
-        final ClientOverrideConfiguration clientOverrideConfiguration = S3Service.buildOverrideConfiguration(
-            clientSettings
-        );
+        final ClientOverrideConfiguration clientOverrideConfiguration = S3Service.buildOverrideConfiguration(clientSettings);
 
         // TODO not supported in v2
         // assertThat(configuration.getResponseMetadataCacheSize(), is(0));

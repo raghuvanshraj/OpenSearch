@@ -307,9 +307,7 @@ class S3Service implements Closeable {
         return proxyConfiguration.build();
     }
 
-    static ClientOverrideConfiguration buildOverrideConfiguration(
-        final S3ClientSettings clientSettings
-    ) {
+    static ClientOverrideConfiguration buildOverrideConfiguration(final S3ClientSettings clientSettings) {
         ClientOverrideConfiguration.Builder clientOverrideConfiguration = ClientOverrideConfiguration.builder();
         if (Strings.hasLength(clientSettings.signerOverride)) {
             clientOverrideConfiguration = clientOverrideConfiguration.putAdvancedOption(

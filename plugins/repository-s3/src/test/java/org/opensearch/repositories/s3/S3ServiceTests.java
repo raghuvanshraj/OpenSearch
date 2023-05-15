@@ -59,9 +59,7 @@ public class S3ServiceTests extends OpenSearchTestCase implements ConfigPathSupp
         final AmazonS3Reference reference = SocketAccess.doPrivileged(() -> s3Service.client(metadata1));
         reference.close();
         s3Service.close();
-        final AmazonS3Reference referenceReloaded = SocketAccess.doPrivileged(
-            () -> s3Service.client(metadata1)
-        );
+        final AmazonS3Reference referenceReloaded = SocketAccess.doPrivileged(() -> s3Service.client(metadata1));
         assertNotSame(referenceReloaded, reference);
         referenceReloaded.close();
         s3Service.close();
@@ -87,9 +85,7 @@ public class S3ServiceTests extends OpenSearchTestCase implements ConfigPathSupp
         final AmazonS3Reference reference = SocketAccess.doPrivileged(() -> s3Service.client(metadata1));
         reference.close();
         s3Service.close();
-        final AmazonS3Reference referenceReloaded = SocketAccess.doPrivileged(
-            () -> s3Service.client(metadata1)
-        );
+        final AmazonS3Reference referenceReloaded = SocketAccess.doPrivileged(() -> s3Service.client(metadata1));
         assertNotSame(referenceReloaded, reference);
         referenceReloaded.close();
         s3Service.close();

@@ -337,9 +337,7 @@ public class RepositoryCredentialsTests extends OpenSearchSingleNodeTestCase imp
 
             @Override
             AmazonS3WithCredentials buildClient(final S3ClientSettings clientSettings) {
-                final AmazonS3WithCredentials client = SocketAccess.doPrivileged(
-                    () -> super.buildClient(clientSettings)
-                );
+                final AmazonS3WithCredentials client = SocketAccess.doPrivileged(() -> super.buildClient(clientSettings));
                 final AwsCredentialsProvider credentials = buildCredentials(logger, clientSettings);
                 return AmazonS3WithCredentials.create(new ClientAndCredentials(client.client(), credentials), credentials);
             }
