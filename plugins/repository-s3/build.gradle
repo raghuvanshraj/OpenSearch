@@ -68,8 +68,6 @@ dependencies {
   api "software.amazon.awssdk:aws-query-protocol:${versions.aws}"
   api "software.amazon.awssdk:sts:${versions.aws}"
   api "org.reactivestreams:reactive-streams:${versions.reactivestreams}"
-  // TODO
-//  api "com.amazonaws:jmespath-java:${versions.aws}"
   api "org.apache.httpcomponents:httpclient:${versions.httpclient}"
   api "org.apache.httpcomponents:httpcore:${versions.httpcore}"
   api "commons-logging:commons-logging:${versions.commonslogging}"
@@ -385,9 +383,9 @@ thirdPartyAudit.ignoreMissingClasses(
   'org.apache.avalon.framework.logger.Logger',
   'org.apache.log.Hierarchy',
   'org.apache.log.Logger',
-  'org.slf4j.Logger',
-  'org.slf4j.LoggerFactory',
-  'org.slf4j.event.Level',
+  'org.slf4j.impl.StaticLoggerBinder',
+  'org.slf4j.impl.StaticMDCBinder',
+  'org.slf4j.impl.StaticMarkerBinder',
   'software.amazon.awssdk.arns.Arn',
   'software.amazon.awssdk.arns.ArnResource',
   'software.amazon.awssdk.crt.CRT',
