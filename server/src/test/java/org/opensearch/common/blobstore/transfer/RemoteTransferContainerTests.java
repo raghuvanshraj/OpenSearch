@@ -57,7 +57,8 @@ public class RemoteTransferContainerTests extends OpenSearchTestCase {
                 testFile.getFileName().toString(),
                 testFile.getFileName().toString(),
                 true,
-                WritePriority.HIGH
+                WritePriority.HIGH,
+                0
             )
         ) {
             testSupplyStreamContext(remoteTransferContainer, 16, 16, 8);
@@ -86,7 +87,8 @@ public class RemoteTransferContainerTests extends OpenSearchTestCase {
                 testFile.getFileName().toString(),
                 testFile.getFileName().toString(),
                 true,
-                WritePriority.HIGH
+                WritePriority.HIGH,
+                0
             )
         ) {
             testSupplyStreamContext(remoteTransferContainer, 10, 8, 13);
