@@ -207,9 +207,9 @@ public class S3BlobStoreRepositoryTests extends OpenSearchMockAPIBasedRepository
             if ("AWS4SignerType".equals(signerOverride)) {
                 assertThat(authorizationHeaderV4, containsString("aws4_request"));
             }
-            // if (region != null && authorizationHeaderV4 != null) {
-            // assertThat(authorizationHeaderV4, containsString("/" + region + "/s3/"));
-            // }
+             if (region != null && authorizationHeaderV4 != null) {
+             assertThat(authorizationHeaderV4, containsString("/" + region + "/s3/"));
+             }
         }
     }
 
