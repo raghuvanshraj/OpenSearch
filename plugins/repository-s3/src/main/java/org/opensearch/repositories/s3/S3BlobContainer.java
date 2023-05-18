@@ -374,6 +374,7 @@ class S3BlobContainer extends AbstractBlobContainer {
             throw new IllegalArgumentException("Upload request size [" + blobSize + "] can't be larger than buffer size");
         }
 
+        System.out.println("BUCKET: " + blobStore.bucket());
         PutObjectRequest.Builder putObjectRequestBuilder = PutObjectRequest.builder()
             .bucket(blobStore.bucket())
             .key(blobName)

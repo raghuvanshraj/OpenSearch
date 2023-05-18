@@ -31,6 +31,7 @@
 
 package org.opensearch.repositories.s3;
 
+import org.junit.Before;
 import org.opensearch.action.support.master.AcknowledgedResponse;
 import org.opensearch.common.blobstore.BlobMetadata;
 import org.opensearch.common.blobstore.BlobPath;
@@ -54,6 +55,13 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 
 public class S3RepositoryThirdPartyTests extends AbstractThirdPartyRepositoryTestCase {
+
+    @Override
+    @Before
+    public void setUp() throws Exception {
+        SocketAccess.doPrivileged(() -> System.setProperty("opensearch.path.conf", "config"));
+        super.setUp();
+    }
 
     @Override
     protected Collection<Class<? extends Plugin>> getPlugins() {
