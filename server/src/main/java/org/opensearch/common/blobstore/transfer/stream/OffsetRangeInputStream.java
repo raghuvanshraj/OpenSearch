@@ -8,6 +8,7 @@
 
 package org.opensearch.common.blobstore.transfer.stream;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 /**
@@ -15,5 +16,5 @@ import java.io.InputStream;
  * and adds a method to get the file pointer to the specific part being read
  */
 public abstract class OffsetRangeInputStream extends InputStream {
-    public abstract Long getFilePointer();
+    public abstract long getFilePointer() throws IOException;
 }
