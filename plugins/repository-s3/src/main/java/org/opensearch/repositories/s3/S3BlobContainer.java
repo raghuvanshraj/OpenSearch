@@ -165,6 +165,7 @@ class S3BlobContainer extends AbstractBlobContainer {
 
     @Override
     public CompletableFuture<UploadResponse> writeBlobByStreams(WriteContext writeContext) throws IOException {
+        logger.info("writeBlobByStreams called; multipart upload working");
         UploadRequest uploadRequest = new UploadRequest(
             blobStore.bucket(),
             buildKey(writeContext.getFileName()),
