@@ -8,6 +8,9 @@
 
 package org.opensearch.common.blobstore.transfer.stream;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
@@ -19,6 +22,9 @@ import java.nio.file.StandardOpenOption;
  * OffsetRangeFileInputStream extends InputStream to read from a specified offset using FileChannel
  */
 public class OffsetRangeFileInputStream extends OffsetRangeInputStream {
+
+    private static final Logger logger = LogManager.getLogger(OffsetRangeFileInputStream.class);
+
     private final InputStream inputStream;
     private final FileChannel fileChannel;
 
@@ -109,8 +115,13 @@ public class OffsetRangeFileInputStream extends OffsetRangeInputStream {
     }
 
     @Override
-    public long getFilePointer() throws IOException {
-        return fileChannel.position();
+    public Long getFilePointer() {
+        try {
+            return fileChannel.position();
+        } catch (IOException e) {
+            logger.error("Error getting position of file channel", e);
+        }
+        return null;
     }
 
     @Override

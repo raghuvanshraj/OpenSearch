@@ -61,7 +61,7 @@ public class OffsetRangeIndexInputStream extends OffsetRangeInputStream {
     }
 
     @Override
-    public long getFilePointer() throws IOException {
+    public Long getFilePointer() {
         return indexInput.getFilePointer();
     }
 
