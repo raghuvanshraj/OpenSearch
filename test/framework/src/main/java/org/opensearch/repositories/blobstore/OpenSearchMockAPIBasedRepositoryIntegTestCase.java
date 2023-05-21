@@ -295,12 +295,12 @@ public abstract class OpenSearchMockAPIBasedRepositoryIntegTestCase extends Open
 
                 final boolean canFailRequest = canFailRequest(exchange);
                 final int count = requests.computeIfAbsent(requestId, req -> new AtomicInteger(0)).incrementAndGet();
-//                if (count >= maxErrorsPerRequest || canFailRequest == false) {
+                if (count >= maxErrorsPerRequest || canFailRequest == false) {
                     requests.remove(requestId);
                     delegate.handle(exchange);
-//                } else {
-//                    handleAsError(exchange);
-//                }
+                } else {
+                    handleAsError(exchange);
+                }
             } finally {
                 try {
                     int read = exchange.getRequestBody().read();

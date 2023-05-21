@@ -57,6 +57,7 @@ import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.client.config.SdkAdvancedClientOption;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
+import software.amazon.awssdk.core.retry.conditions.TokenBucketRetryCondition;
 import software.amazon.awssdk.http.SystemPropertyTlsKeyManagersProvider;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
@@ -315,9 +316,11 @@ class S3Service implements Closeable {
                 AwsRequestSigner.fromSignerName(clientSettings.signerOverride).getSigner()
             );
         }
-        RetryPolicy.Builder retryPolicy = RetryPolicy.builder().numRetries(clientSettings.maxRetries);
+        RetryPolicy.Builder retryPolicy = RetryPolicy.builder()
+            .numRetries(clientSettings.maxRetries)
+            .retryCapacityCondition(null);
         if (!clientSettings.throttleRetries) {
-            retryPolicy = retryPolicy.throttlingBackoffStrategy(BackoffStrategy.none());
+            retryPolicy.throttlingBackoffStrategy(BackoffStrategy.none());
         }
         return clientOverrideConfiguration.retryPolicy(retryPolicy.build()).build();
     }
