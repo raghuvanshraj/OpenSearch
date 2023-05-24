@@ -8,14 +8,11 @@
 
 package org.opensearch.repositories.blobstore;
 
-import org.opensearch.common.unit.ByteSizeUnit;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.zip.CRC32;
 
 /**
  * A resettable InputStream that only serves zeros.
