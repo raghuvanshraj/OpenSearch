@@ -73,7 +73,7 @@ public class RemoteSegmentStoreDirectoryTests extends IndexShardTestCase {
     private RemoteStoreMetadataLockManager mdLockManager;
 
     private RemoteSegmentStoreDirectory remoteSegmentStoreDirectory;
-    private TestUploadTracker testUploadTracker;
+    private TestUploadListener testUploadListener;
     private IndexShard indexShard;
     private SegmentInfos segmentInfos;
     private ThreadPool threadPool;
@@ -91,7 +91,7 @@ public class RemoteSegmentStoreDirectoryTests extends IndexShardTestCase {
             mdLockManager,
             threadPool
         );
-        testUploadTracker = new TestUploadTracker();
+        testUploadListener = new TestUploadListener();
 
         Settings indexSettings = Settings.builder().put(IndexMetadata.SETTING_VERSION_CREATED, org.opensearch.Version.CURRENT).build();
         ExecutorService executorService = OpenSearchExecutors.newDirectExecutorService();
@@ -573,10 +573,10 @@ public class RemoteSegmentStoreDirectoryTests extends IndexShardTestCase {
         uploadResponseCompletableFuture.complete(null);
         when(blobContainer.writeBlobByStreams(any(WriteContext.class))).thenReturn(uploadResponseCompletableFuture);
 
-        remoteSegmentStoreDirectory.copyFilesFrom(storeDirectory, List.of(filename), IOContext.DEFAULT, testUploadTracker);
+        remoteSegmentStoreDirectory.copyFilesFrom(storeDirectory, List.of(filename), IOContext.DEFAULT, testUploadListener);
 
         assertTrue(remoteSegmentStoreDirectory.getSegmentsUploadedToRemoteStore().containsKey(filename));
-        assertEquals(TestUploadTracker.UploadStatus.UPLOAD_SUCCESS, testUploadTracker.getUploadStatus(filename));
+        assertEquals(TestUploadListener.UploadStatus.UPLOAD_SUCCESS, testUploadListener.getUploadStatus(filename));
 
         storeDirectory.close();
     }
@@ -604,11 +604,11 @@ public class RemoteSegmentStoreDirectoryTests extends IndexShardTestCase {
 
         assertThrows(
             IOException.class,
-            () -> remoteSegmentStoreDirectory.copyFilesFrom(storeDirectory, List.of(filename), IOContext.DEFAULT, testUploadTracker)
+            () -> remoteSegmentStoreDirectory.copyFilesFrom(storeDirectory, List.of(filename), IOContext.DEFAULT, testUploadListener)
         );
 
         assertFalse(remoteSegmentStoreDirectory.getSegmentsUploadedToRemoteStore().containsKey(filename));
-        assertEquals(TestUploadTracker.UploadStatus.UPLOAD_FAILURE, testUploadTracker.getUploadStatus(filename));
+        assertEquals(TestUploadListener.UploadStatus.UPLOAD_FAILURE, testUploadListener.getUploadStatus(filename));
 
         storeDirectory.close();
     }
@@ -636,11 +636,11 @@ public class RemoteSegmentStoreDirectoryTests extends IndexShardTestCase {
 
         assertThrows(
             ExecutionException.class,
-            () -> remoteSegmentStoreDirectory.copyFilesFrom(storeDirectory, List.of(filename), IOContext.DEFAULT, testUploadTracker)
+            () -> remoteSegmentStoreDirectory.copyFilesFrom(storeDirectory, List.of(filename), IOContext.DEFAULT, testUploadListener)
         );
 
         assertFalse(remoteSegmentStoreDirectory.getSegmentsUploadedToRemoteStore().containsKey(filename));
-        assertEquals(TestUploadTracker.UploadStatus.UPLOAD_FAILURE, testUploadTracker.getUploadStatus(filename));
+        assertEquals(TestUploadListener.UploadStatus.UPLOAD_FAILURE, testUploadListener.getUploadStatus(filename));
 
         storeDirectory.close();
     }
