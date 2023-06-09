@@ -20,7 +20,6 @@ import org.opensearch.common.blobstore.stream.write.WritePriority;
 import org.opensearch.common.blobstore.transfer.RemoteTransferContainer;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeFileInputStream;
 import org.opensearch.index.translog.ChannelFactory;
-import org.opensearch.index.translog.TranslogCheckedContainer;
 import org.opensearch.index.translog.transfer.FileSnapshot.TransferFileSnapshot;
 import org.opensearch.threadpool.ThreadPool;
 
@@ -31,6 +30,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -122,16 +122,8 @@ public class BlobStoreTransferService implements TransferService {
         try {
             ChannelFactory channelFactory = FileChannel::open;
             long contentLength;
-            long expectedChecksum;
             try (FileChannel channel = channelFactory.open(fileSnapshot.getPath(), StandardOpenOption.READ)) {
                 contentLength = channel.size();
-                TranslogCheckedContainer translogCheckedContainer = new TranslogCheckedContainer(
-                    channel,
-                    0,
-                    (int) contentLength,
-                    fileSnapshot.getName()
-                );
-                expectedChecksum = translogCheckedContainer.getChecksum();
             }
             RemoteTransferContainer remoteTransferContainer = new RemoteTransferContainer(
                 fileSnapshot.getName(),
@@ -140,7 +132,7 @@ public class BlobStoreTransferService implements TransferService {
                 true,
                 writePriority,
                 (size, position) -> new OffsetRangeFileInputStream(fileSnapshot.getPath(), size, position),
-                expectedChecksum,
+                Objects.requireNonNull(fileSnapshot.getChecksum()),
                 blobStore.blobContainer(blobPath).isRemoteDataIntegritySupported()
             );
             WriteContext writeContext = remoteTransferContainer.createWriteContext();
