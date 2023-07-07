@@ -64,7 +64,7 @@ public final class AsyncTransferManager {
     private static final long MAX_UPLOAD_PARTS = 10_000;
 
     /**
-     * Construct a new object of AsyncUploadUtils
+     * Construct a new object of AsyncTransferManager
      *
      * @param minimumPartSize         The minimum part size for parallel multipart uploads
      * @param executorService         The stream reader {@link ExecutorService} for normal priority uploads

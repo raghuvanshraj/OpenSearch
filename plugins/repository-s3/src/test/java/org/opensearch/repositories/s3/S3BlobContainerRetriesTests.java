@@ -65,8 +65,8 @@ import org.opensearch.common.util.io.IOUtils;
 import org.opensearch.repositories.blobstore.AbstractBlobContainerRetriesTestCase;
 import org.opensearch.repositories.blobstore.ZeroInputStream;
 import org.opensearch.repositories.s3.async.AsyncExecutorBuilder;
-import org.opensearch.repositories.s3.async.AsyncUploadUtils;
-import org.opensearch.repositories.s3.async.TransferNIOGroup;
+import org.opensearch.repositories.s3.async.AsyncTransferManager;
+import org.opensearch.repositories.s3.async.AsyncTransferEventLoopGroup;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.io.SdkDigestInputStream;
 import software.amazon.awssdk.utils.internal.Base16;
@@ -110,7 +110,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
     private S3AsyncService asyncService;
     private ExecutorService futureCompletionService;
     private ExecutorService streamReaderService;
-    private TransferNIOGroup transferNIOGroup;
+    private AsyncTransferEventLoopGroup transferNIOGroup;
 
     @Before
     public void setUp() throws Exception {
@@ -120,7 +120,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
 
         futureCompletionService = Executors.newSingleThreadExecutor();
         streamReaderService = Executors.newSingleThreadExecutor();
-        transferNIOGroup = new TransferNIOGroup(1);
+        transferNIOGroup = new AsyncTransferEventLoopGroup(1);
 
         // needed by S3AsyncService
         SocketAccess.doPrivileged(() -> System.setProperty("opensearch.path.conf", configPath().toString()));
@@ -213,7 +213,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
                 S3Repository.CANNED_ACL_SETTING.getDefault(Settings.EMPTY),
                 S3Repository.STORAGE_CLASS_SETTING.getDefault(Settings.EMPTY),
                 repositoryMetadata,
-                new AsyncUploadUtils(
+                new AsyncTransferManager(
                     S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.getDefault(Settings.EMPTY).getBytes(),
                     asyncExecutorBuilder.getStreamReader(),
                     asyncExecutorBuilder.getStreamReader()

@@ -194,7 +194,7 @@ class S3AsyncService implements Closeable {
             builder.forcePathStyle(true);
         }
 
-        builder.httpClient(buildHttpClient(clientSettings, priorityExecutorBuilder.getTransferNIOGroup()));
+        builder.httpClient(buildHttpClient(clientSettings, priorityExecutorBuilder.getAsyncTransferEventLoopGroup()));
         builder.asyncConfiguration(
             ClientAsyncConfiguration.builder()
                 .advancedOption(
@@ -205,7 +205,7 @@ class S3AsyncService implements Closeable {
         );
         final S3AsyncClient priorityClient = SocketAccess.doPrivileged(builder::build);
 
-        builder.httpClient(buildHttpClient(clientSettings, normalExecutorBuilder.getTransferNIOGroup()));
+        builder.httpClient(buildHttpClient(clientSettings, normalExecutorBuilder.getAsyncTransferEventLoopGroup()));
         builder.asyncConfiguration(
             ClientAsyncConfiguration.builder()
                 .advancedOption(

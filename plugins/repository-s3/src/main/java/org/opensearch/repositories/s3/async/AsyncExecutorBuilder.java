@@ -40,7 +40,7 @@ public class AsyncExecutorBuilder {
         return futureCompletionExecutor;
     }
 
-    public AsyncTransferEventLoopGroup getTransferNIOGroup() {
+    public AsyncTransferEventLoopGroup getAsyncTransferEventLoopGroup() {
         return asyncTransferEventLoopGroup;
     }
 

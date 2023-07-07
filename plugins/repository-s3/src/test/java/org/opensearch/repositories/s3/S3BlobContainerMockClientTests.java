@@ -27,8 +27,8 @@ import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.ByteSizeValue;
 import org.opensearch.common.util.io.IOUtils;
 import org.opensearch.repositories.s3.async.AsyncExecutorBuilder;
-import org.opensearch.repositories.s3.async.AsyncUploadUtils;
-import org.opensearch.repositories.s3.async.TransferNIOGroup;
+import org.opensearch.repositories.s3.async.AsyncTransferManager;
+import org.opensearch.repositories.s3.async.AsyncTransferEventLoopGroup;
 import org.opensearch.test.OpenSearchTestCase;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -73,7 +73,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
     private MockS3AsyncService asyncService;
     private ExecutorService futureCompletionService;
     private ExecutorService streamReaderService;
-    private TransferNIOGroup transferNIOGroup;
+    private AsyncTransferEventLoopGroup transferNIOGroup;
     private S3BlobContainer blobContainer;
 
     static class MockS3AsyncService extends S3AsyncService {
@@ -345,7 +345,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
         asyncService = new MockS3AsyncService(configPath(), 1000);
         futureCompletionService = Executors.newSingleThreadExecutor();
         streamReaderService = Executors.newSingleThreadExecutor();
-        transferNIOGroup = new TransferNIOGroup(1);
+        transferNIOGroup = new AsyncTransferEventLoopGroup(1);
         blobContainer = createBlobContainer();
         super.setUp();
     }
@@ -386,7 +386,7 @@ public class S3BlobContainerMockClientTests extends OpenSearchTestCase implement
             S3Repository.CANNED_ACL_SETTING.getDefault(Settings.EMPTY),
             S3Repository.STORAGE_CLASS_SETTING.getDefault(Settings.EMPTY),
             repositoryMetadata,
-            new AsyncUploadUtils(
+            new AsyncTransferManager(
                 S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.getDefault(Settings.EMPTY).getBytes(),
                 asyncExecutorBuilder.getStreamReader(),
                 asyncExecutorBuilder.getStreamReader()

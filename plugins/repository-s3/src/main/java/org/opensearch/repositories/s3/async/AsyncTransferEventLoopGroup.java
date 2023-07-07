@@ -23,7 +23,7 @@ import java.io.Closeable;
 import java.util.concurrent.TimeUnit;
 
 /**
- * TransferNIOGroup is an encapsulation for netty {@link EventLoopGroup}
+ * AsyncTransferEventLoopGroup is an encapsulation for netty {@link EventLoopGroup}
  */
 public class AsyncTransferEventLoopGroup implements Closeable {
     private static final String THREAD_PREFIX = "s3-async-transfer-worker";
@@ -32,7 +32,7 @@ public class AsyncTransferEventLoopGroup implements Closeable {
     private final EventLoopGroup eventLoopGroup;
 
     /**
-     * Construct a new TransferNIOGroup
+     * Construct a new AsyncTransferEventLoopGroup
      *
      * @param eventLoopThreads The number of event loop threads for this event loop group
      */
