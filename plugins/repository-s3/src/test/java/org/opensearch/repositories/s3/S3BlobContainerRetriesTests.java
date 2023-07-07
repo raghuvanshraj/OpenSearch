@@ -33,22 +33,24 @@ package org.opensearch.repositories.s3;
 
 import org.apache.http.HttpStatus;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
+import org.opensearch.action.ActionListener;
 import org.opensearch.cluster.metadata.RepositoryMetadata;
+import org.opensearch.common.CheckedTriFunction;
 import org.opensearch.common.Nullable;
-import org.opensearch.common.io.InputStreamContainer;
 import org.opensearch.common.StreamContext;
 import org.opensearch.common.SuppressForbidden;
-import org.opensearch.common.CheckedTriFunction;
 import org.opensearch.common.blobstore.BlobContainer;
 import org.opensearch.common.blobstore.BlobPath;
+import org.opensearch.common.blobstore.VerifyingMultiStreamBlobContainer;
 import org.opensearch.common.blobstore.stream.write.StreamContextSupplier;
 import org.opensearch.common.blobstore.stream.write.WriteContext;
 import org.opensearch.common.blobstore.stream.write.WritePriority;
-import org.opensearch.common.blobstore.transfer.UploadFinalizer;
 import org.opensearch.common.blobstore.transfer.stream.OffsetRangeIndexInputStream;
 import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.hash.MessageDigests;
+import org.opensearch.common.io.InputStreamContainer;
 import org.opensearch.common.io.Streams;
 import org.opensearch.common.lucene.store.ByteArrayIndexInput;
 import org.opensearch.common.lucene.store.InputStreamIndexInput;
@@ -61,13 +63,13 @@ import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.concurrent.CountDown;
 import org.opensearch.common.util.io.IOUtils;
 import org.opensearch.repositories.blobstore.AbstractBlobContainerRetriesTestCase;
+import org.opensearch.repositories.blobstore.ZeroInputStream;
+import org.opensearch.repositories.s3.async.AsyncExecutorBuilder;
+import org.opensearch.repositories.s3.async.AsyncTransferManager;
+import org.opensearch.repositories.s3.async.AsyncTransferEventLoopGroup;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.io.SdkDigestInputStream;
 import software.amazon.awssdk.utils.internal.Base16;
-import org.opensearch.repositories.s3.async.AsyncExecutorBuilder;
-import org.opensearch.repositories.s3.async.AsyncUploadUtils;
-import org.opensearch.repositories.s3.async.TransferNIOGroup;
-import org.opensearch.repositories.blobstore.ZeroInputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
@@ -80,10 +82,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
@@ -107,7 +111,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
     private S3AsyncService asyncService;
     private ExecutorService futureCompletionService;
     private ExecutorService streamReaderService;
-    private TransferNIOGroup transferNIOGroup;
+    private AsyncTransferEventLoopGroup transferNIOGroup;
 
     @Before
     public void setUp() throws Exception {
@@ -117,7 +121,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
 
         futureCompletionService = Executors.newSingleThreadExecutor();
         streamReaderService = Executors.newSingleThreadExecutor();
-        transferNIOGroup = new TransferNIOGroup(1);
+        transferNIOGroup = new AsyncTransferEventLoopGroup(1);
 
         // needed by S3AsyncService
         SocketAccess.doPrivileged(() -> System.setProperty("opensearch.path.conf", configPath().toString()));
@@ -156,7 +160,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
     }
 
     @Override
-    protected BlobContainer createBlobContainer(
+    protected VerifyingMultiStreamBlobContainer createBlobContainer(
         final @Nullable Integer maxRetries,
         final @Nullable TimeValue readTimeout,
         final @Nullable Boolean disableChunkedEncoding,
@@ -211,7 +215,7 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
                 S3Repository.CANNED_ACL_SETTING.getDefault(Settings.EMPTY),
                 S3Repository.STORAGE_CLASS_SETTING.getDefault(Settings.EMPTY),
                 repositoryMetadata,
-                new AsyncUploadUtils(
+                new AsyncTransferManager(
                     S3Repository.PARALLEL_MULTIPART_UPLOAD_MINIMUM_PART_SIZE_SETTING.getDefault(Settings.EMPTY).getBytes(),
                     asyncExecutorBuilder.getStreamReader(),
                     asyncExecutorBuilder.getStreamReader()
@@ -315,35 +319,29 @@ public class S3BlobContainerRetriesTests extends AbstractBlobContainerRetriesTes
             }
         });
 
-        final BlobContainer blobContainer = createBlobContainer(maxRetries, null, true, null);
+        final VerifyingMultiStreamBlobContainer blobContainer = createBlobContainer(maxRetries, null, true, null);
         List<InputStream> openInputStreams = new ArrayList<>();
-        CompletableFuture<Void> completableFuture = blobContainer.writeBlobByStreams(
-            new WriteContext("write_blob_by_streams_max_retries", new StreamContextSupplier() {
-                @Override
-                public StreamContext supplyStreamContext(long partSize) {
-                    return new StreamContext(new CheckedTriFunction<Integer, Long, Long, InputStreamContainer, IOException>() {
-                        @Override
-                        public InputStreamContainer apply(Integer partNo, Long size, Long position) throws IOException {
-                            InputStream inputStream = new OffsetRangeIndexInputStream(
-                                new ByteArrayIndexInput("desc", bytes),
-                                size,
-                                position
-                            );
-                            openInputStreams.add(inputStream);
-                            return new InputStreamContainer(inputStream, size);
-                        }
-                    }, partSize, calculateLastPartSize(bytes.length, partSize), calculateNumberOfParts(bytes.length, partSize));
-                }
-            }, bytes.length, false, WritePriority.NORMAL, new UploadFinalizer() {
-                @Override
-                public void accept(boolean uploadSuccess) {
-                    assertTrue(uploadSuccess);
-                }
-            }, false, null)
-        );
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        AtomicReference<Exception> exceptionRef = new AtomicReference<>();
+        ActionListener<Void> completionListener = ActionListener.wrap(resp -> { countDownLatch.countDown(); }, ex -> {
+            exceptionRef.set(ex);
+            countDownLatch.countDown();
+        });
+        blobContainer.asyncBlobUpload(new WriteContext("write_blob_by_streams_max_retries", new StreamContextSupplier() {
+            @Override
+            public StreamContext supplyStreamContext(long partSize) {
+                return new StreamContext(new CheckedTriFunction<Integer, Long, Long, InputStreamContainer, IOException>() {
+                    @Override
+                    public InputStreamContainer apply(Integer partNo, Long size, Long position) throws IOException {
+                        InputStream inputStream = new OffsetRangeIndexInputStream(new ByteArrayIndexInput("desc", bytes), size, position);
+                        openInputStreams.add(inputStream);
+                        return new InputStreamContainer(inputStream, size, position);
+                    }
+                }, partSize, calculateLastPartSize(bytes.length, partSize), calculateNumberOfParts(bytes.length, partSize));
+            }
+        }, bytes.length, false, WritePriority.NORMAL, Assert::assertTrue, false, null), completionListener);
 
-        // wait for completableFuture to finish
-        completableFuture.get();
+        assertTrue(countDownLatch.await(5000, TimeUnit.SECONDS));
 
         assertThat(countDown.isCountedDown(), is(true));
 
