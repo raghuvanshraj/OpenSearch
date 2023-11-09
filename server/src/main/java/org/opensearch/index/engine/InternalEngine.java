@@ -1052,54 +1052,65 @@ public class InternalEngine extends Engine {
             final VersionValue versionValue = resolveDocVersion(index, index.getIfSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO);
             final long currentVersion;
             final boolean currentNotFoundOrDeleted;
-            if (versionValue == null) {
-                currentVersion = Versions.NOT_FOUND;
-                currentNotFoundOrDeleted = true;
-            } else {
-                currentVersion = versionValue.version;
-                currentNotFoundOrDeleted = versionValue.isDelete();
-            }
-            if (index.getIfSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO && currentNotFoundOrDeleted) {
-                final VersionConflictEngineException e = new VersionConflictEngineException(
-                    shardId,
-                    index.id(),
-                    index.getIfSeqNo(),
-                    index.getIfPrimaryTerm(),
-                    SequenceNumbers.UNASSIGNED_SEQ_NO,
-                    SequenceNumbers.UNASSIGNED_PRIMARY_TERM
-                );
-                plan = IndexingStrategy.skipDueToVersionConflict(e, true, currentVersion);
-            } else if (index.getIfSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO
-                && (versionValue.seqNo != index.getIfSeqNo() || versionValue.term != index.getIfPrimaryTerm())) {
-                    final VersionConflictEngineException e = new VersionConflictEngineException(
-                        shardId,
-                        index.id(),
-                        index.getIfSeqNo(),
-                        index.getIfPrimaryTerm(),
-                        versionValue.seqNo,
-                        versionValue.term
-                    );
-                    plan = IndexingStrategy.skipDueToVersionConflict(e, currentNotFoundOrDeleted, currentVersion);
-                } else if (index.versionType().isVersionConflictForWrites(currentVersion, index.version(), currentNotFoundOrDeleted)) {
-                    final VersionConflictEngineException e = new VersionConflictEngineException(
-                        shardId,
-                        index,
-                        currentVersion,
-                        currentNotFoundOrDeleted
-                    );
-                    plan = IndexingStrategy.skipDueToVersionConflict(e, currentNotFoundOrDeleted, currentVersion);
-                } else {
-                    final Exception reserveError = tryAcquireInFlightDocs(index, reservingDocs);
-                    if (reserveError != null) {
-                        plan = IndexingStrategy.failAsTooManyDocs(reserveError);
-                    } else {
-                        plan = IndexingStrategy.processNormally(
-                            currentNotFoundOrDeleted,
-                            canOptimizeAddDocument ? 1L : index.versionType().updateVersion(currentVersion, index.version()),
-                            reservingDocs
-                        );
-                    }
-                }
+
+            // always throw a VersionConflictEngineException
+            final VersionConflictEngineException e = new VersionConflictEngineException(
+                shardId,
+                index.id(),
+                index.getIfSeqNo(),
+                index.getIfPrimaryTerm(),
+                SequenceNumbers.UNASSIGNED_SEQ_NO,
+                SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+            );
+            plan = IndexingStrategy.skipDueToVersionConflict(e, true, Versions.NOT_FOUND);
+//            if (versionValue == null) {
+//                currentVersion = Versions.NOT_FOUND;
+//                currentNotFoundOrDeleted = true;
+//            } else {
+//                currentVersion = versionValue.version;
+//                currentNotFoundOrDeleted = versionValue.isDelete();
+//            }
+//            if (index.getIfSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO && currentNotFoundOrDeleted) {
+//                final VersionConflictEngineException e = new VersionConflictEngineException(
+//                    shardId,
+//                    index.id(),
+//                    index.getIfSeqNo(),
+//                    index.getIfPrimaryTerm(),
+//                    SequenceNumbers.UNASSIGNED_SEQ_NO,
+//                    SequenceNumbers.UNASSIGNED_PRIMARY_TERM
+//                );
+//                plan = IndexingStrategy.skipDueToVersionConflict(e, true, currentVersion);
+//            } else if (index.getIfSeqNo() != SequenceNumbers.UNASSIGNED_SEQ_NO
+//                && (versionValue.seqNo != index.getIfSeqNo() || versionValue.term != index.getIfPrimaryTerm())) {
+//                    final VersionConflictEngineException e = new VersionConflictEngineException(
+//                        shardId,
+//                        index.id(),
+//                        index.getIfSeqNo(),
+//                        index.getIfPrimaryTerm(),
+//                        versionValue.seqNo,
+//                        versionValue.term
+//                    );
+//                    plan = IndexingStrategy.skipDueToVersionConflict(e, currentNotFoundOrDeleted, currentVersion);
+//                } else if (index.versionType().isVersionConflictForWrites(currentVersion, index.version(), currentNotFoundOrDeleted)) {
+//                    final VersionConflictEngineException e = new VersionConflictEngineException(
+//                        shardId,
+//                        index,
+//                        currentVersion,
+//                        currentNotFoundOrDeleted
+//                    );
+//                    plan = IndexingStrategy.skipDueToVersionConflict(e, currentNotFoundOrDeleted, currentVersion);
+//                } else {
+//                    final Exception reserveError = tryAcquireInFlightDocs(index, reservingDocs);
+//                    if (reserveError != null) {
+//                        plan = IndexingStrategy.failAsTooManyDocs(reserveError);
+//                    } else {
+//                        plan = IndexingStrategy.processNormally(
+//                            currentNotFoundOrDeleted,
+//                            canOptimizeAddDocument ? 1L : index.versionType().updateVersion(currentVersion, index.version()),
+//                            reservingDocs
+//                        );
+//                    }
+//                }
         }
         return plan;
     }
