@@ -92,10 +92,10 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
             }
 
             // make indexing engines aware of everything
-//            for (IndexingExecutionEngine<?> delegate : delegates) {
-//                RefreshResult result = delegate.refresh(refreshInputs.get(delegate.getDataFormat()));
-//                finalResult.add(delegate.getDataFormat(), result.getRefreshedFiles().get(delegate.getDataFormat()));
-//            }
+            for (IndexingExecutionEngine<?> delegate : delegates) {
+                RefreshResult result = delegate.refresh(refreshInputs.get(delegate.getDataFormat()));
+                finalResult.add(delegate.getDataFormat(), result.getRefreshedFiles().get(delegate.getDataFormat()));
+            }
 
             // provide a view to the upper layer
             return finalResult;
