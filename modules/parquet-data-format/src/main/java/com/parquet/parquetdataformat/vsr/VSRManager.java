@@ -9,23 +9,17 @@
 package com.parquet.parquetdataformat.vsr;
 
 import com.parquet.parquetdataformat.writer.ParquetDocumentInput;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import com.parquet.parquetdataformat.bridge.RustBridge;
-import com.parquet.parquetdataformat.converter.ParquetFieldType;
 import com.parquet.parquetdataformat.bridge.ArrowExport;
-import com.parquet.parquetdataformat.memory.ArrowBufferPool;
 import com.parquet.parquetdataformat.memory.MemoryPressureMonitor;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.arrow.vector.*;
-import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.opensearch.index.engine.exec.WriteResult;
 
 /**
@@ -36,7 +30,6 @@ import org.opensearch.index.engine.exec.WriteResult;
  * <ul>
  *   <li>{@link ManagedVSR} - Thread-safe VSR with state management</li>
  *   <li>{@link VSRPool} - Resource pooling for VSRs</li>
- *   <li>{@link ArrowBufferPool} - Memory management with pressure monitoring</li>
  *   <li>{@link RustBridge} - Direct JNI calls to Rust backend</li>
  * </ul>
  */
@@ -44,7 +37,6 @@ public class VSRManager {
     private ManagedVSR managedVSR;
     private Map<String, FieldVector> fieldVectorMap;
     private final Schema schema;
-    private final BufferAllocator allocator;
     private final String fileName;
     private final VSRPool vsrPool;
 
@@ -54,11 +46,9 @@ public class VSRManager {
 
         // Create memory monitor and buffer pool
         MemoryPressureMonitor memoryMonitor = new MemoryPressureMonitor(org.opensearch.common.settings.Settings.EMPTY);
-        ArrowBufferPool bufferPool = new ArrowBufferPool(org.opensearch.common.settings.Settings.EMPTY, memoryMonitor);
-        this.allocator = bufferPool.createAllocator("vsrmanager-" + fileName);
 
         // Create VSR pool
-        this.vsrPool = new VSRPool("pool-" + fileName, schema, bufferPool, memoryMonitor);
+        this.vsrPool = new VSRPool("pool-" + fileName, schema, memoryMonitor);
 
 
         // Get active VSR from pool
@@ -161,8 +151,6 @@ public class VSRManager {
             vsrPool.completeVSR(managedVSR);
             managedVSR = null;
 
-            // Close the allocator
-            allocator.close();
         } catch (Exception e) {
             System.err.println("Error during close: " + e.getMessage());
         }
@@ -189,7 +177,7 @@ public class VSRManager {
                 ManagedVSR frozenVSR = vsrPool.getFrozenVSR();
                 if (frozenVSR != null) {
                     System.out.println("[JAVA] Processing frozen VSR: " + frozenVSR.getId() +
-                                     " with " + frozenVSR.getRowCount() + " rows");
+                        " with " + frozenVSR.getRowCount() + " rows");
 
                     // Write the frozen VSR data immediately
                     frozenVSR.setState(VSRState.FLUSHING);
@@ -215,7 +203,7 @@ public class VSRManager {
                 reinitializeFieldVectorMap();
 
                 System.out.println("[JAVA] VSR rotation completed, new active VSR: " + managedVSR.getId() +
-                                 ", row count: " + managedVSR.getRowCount());
+                    ", row count: " + managedVSR.getRowCount());
             }
         } catch (IOException e) {
             System.err.println("[JAVA] Error during VSR rotation: " + e.getMessage());
