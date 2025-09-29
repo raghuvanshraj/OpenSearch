@@ -6,6 +6,7 @@ import org.apache.arrow.vector.types.pojo.Schema;
 import com.parquet.parquetdataformat.memory.ArrowBufferPool;
 import com.parquet.parquetdataformat.memory.MemoryPressureMonitor;
 
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -52,37 +53,70 @@ public class VSRPool {
     
     /**
      * Gets the current active VSR for writing.
-     * Creates a new one if none exists or current is full.
-     * Blocks rotation if frozen VSR slot is occupied to prevent data loss.
+     * Simply returns the current active VSR without any rotation logic.
      * 
-     * @return Active ManagedVSR for writing
+     * @return Active ManagedVSR for writing, or null if none exists
      */
     public ManagedVSR getActiveVSR() {
+        return activeVSR.get();
+    }
+    
+    /**
+     * Checks if VSR rotation is needed and performs it if safe to do so.
+     * Throws IOException if rotation is needed but frozen slot is occupied.
+     * 
+     * @return true if rotation occurred, false if no rotation was needed
+     * @throws IOException if rotation is needed but cannot be performed due to occupied frozen slot
+     */
+    public boolean maybeRotateActiveVSR() throws IOException {
         ManagedVSR current = activeVSR.get();
         
-        // Check if we need to create or rotate VSR
-        if (current == null || shouldRotateVSR(current)) {
-            // CRITICAL: Prevent rotation if frozen slot is occupied
-            if (frozenVSR.get() != null) {
-                // Backpressure: Return current VSR to prevent data loss
-                // Log warning about backpressure condition
-                System.err.println("[VSRPool] WARNING: Rotation blocked due to unprocessed frozen VSR. " +
-                                 "Current VSR rows: " + current.getRowCount() + 
-                                 ", applying backpressure to prevent data loss.");
-                return current;
-            }
-            return rotateActiveVSR();
+        // Check if rotation is needed
+        if (current == null || !shouldRotateVSR(current)) {
+            return false; // No rotation needed
         }
         
-        return current;
+        // CRITICAL: Check if frozen slot is occupied before rotation
+        if (frozenVSR.get() != null) {
+            throw new IOException("Cannot rotate VSR: frozen slot is occupied. " +
+                                "Previous frozen VSR has not been processed. This indicates a " +
+                                "system bottleneck or processing failure.");
+        }
+        
+        // Safe to rotate - perform the rotation
+        synchronized (this) {
+            // Double-check conditions under lock
+            current = activeVSR.get();
+            if (current == null || !shouldRotateVSR(current)) {
+                return false; // Conditions changed while acquiring lock
+            }
+            
+            // Check frozen slot again under lock
+            if (frozenVSR.get() != null) {
+                throw new IOException("Cannot rotate VSR: frozen slot became occupied during rotation");
+            }
+            
+            // Freeze current VSR if it exists and has data
+            if (current != null && current.getRowCount() > 0) {
+                freezeVSR(current);
+            }
+            
+            // Create new active VSR
+            ManagedVSR newActive = createNewVSR();
+            activeVSR.set(newActive);
+            
+            return true; // Rotation occurred
+        }
     }
     
     /**
      * Freezes the current active VSR and creates a new active one.
      * The frozen VSR replaces any existing frozen VSR.
      * 
+     * @deprecated Use maybeRotateActiveVSR() instead for safer rotation with checks
      * @return Newly created active VSR
      */
+    @Deprecated
     public ManagedVSR rotateActiveVSR() {
         synchronized (this) {
             ManagedVSR current = activeVSR.get();
@@ -205,16 +239,35 @@ public class VSRPool {
     }
     
     private ManagedVSR createNewVSR() {
+        String vsrId = poolId + "-vsr-" + vsrCounter.incrementAndGet();
+        BufferAllocator allocator = null;
+        VectorSchemaRoot vsr = null;
+        
         try {
-            String vsrId = poolId + "-vsr-" + vsrCounter.incrementAndGet();
-            BufferAllocator allocator = bufferPool.createAllocator(vsrId);
-            VectorSchemaRoot vsr = VectorSchemaRoot.create(schema, allocator);
+            allocator = bufferPool.createAllocator(vsrId);
+            vsr = VectorSchemaRoot.create(schema, allocator);
             
             ManagedVSR managedVSR = new ManagedVSR(vsrId, vsr, allocator);
             allVSRs.put(vsrId, managedVSR);
             
+            // Success: ManagedVSR now owns the resources
             return managedVSR;
         } catch (Exception e) {
+            // Clean up resources on failure since ManagedVSR couldn't take ownership
+            if (vsr != null) {
+                try {
+                    vsr.close();
+                } catch (Exception closeEx) {
+                    e.addSuppressed(closeEx);
+                }
+            }
+            if (allocator != null) {
+                try {
+                    allocator.close();
+                } catch (Exception closeEx) {
+                    e.addSuppressed(closeEx);
+                }
+            }
             throw new RuntimeException("Failed to create new VSR", e);
         }
     }

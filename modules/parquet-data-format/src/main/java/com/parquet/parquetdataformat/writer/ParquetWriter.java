@@ -42,8 +42,7 @@ public class ParquetWriter implements Writer<ParquetDocumentInput> {
 
     @Override
     public WriteResult addDoc(ParquetDocumentInput d) throws IOException {
-        vsrManager.addDoc(d);
-        return null;
+        return vsrManager.addToManagedVSR(d);
     }
 
     @Override
@@ -69,6 +68,7 @@ public class ParquetWriter implements Writer<ParquetDocumentInput> {
 
     @Override
     public ParquetDocumentInput newDocumentInput() {
-        return new ParquetDocumentInput();
+        // Get a new ManagedVSR from VSRManager for this document input
+        return new ParquetDocumentInput(vsrManager.getActiveManagedVSR());
     }
 }
