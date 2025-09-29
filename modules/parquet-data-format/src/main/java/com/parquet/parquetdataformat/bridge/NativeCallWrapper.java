@@ -29,8 +29,6 @@ public class NativeCallWrapper {
 
     // Configuration
     private final boolean enableValidation;
-    private final long callTimeoutMs;
-    private final int maxRetries;
 
     public NativeCallWrapper(Settings settings) {
         this.settings = settings;
@@ -41,8 +39,6 @@ public class NativeCallWrapper {
 
         // Configuration
         this.enableValidation = settings.getAsBoolean("parquet.native.enable_validation", true);
-        this.callTimeoutMs = settings.getAsLong("parquet.native.call_timeout_ms", 30000L); // 30s default
-        this.maxRetries = settings.getAsInt("parquet.native.max_retries", 2);
     }
 
     /**
@@ -62,46 +58,29 @@ public class NativeCallWrapper {
             return new NativeCallResult(CallResult.VALIDATION_ERROR, validation.getErrorMessage());
         }
 
-        // Execute native call with retry logic
-        for (int attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                long startTime = System.nanoTime();
-                int result = RustBridge.createWriter(fileName, schemaAddress);
-                long duration = System.nanoTime() - startTime;
+        // Execute native call
+        try {
+            long startTime = System.nanoTime();
+            int result = RustBridge.createWriter(fileName, schemaAddress);
+            long duration = System.nanoTime() - startTime;
 
-                if (result == 0) {
-                    // Success - track writer state
-                    writerStates.put(fileName, new WriterState(fileName, System.currentTimeMillis()));
-                    successCount.incrementAndGet();
-                    return new NativeCallResult(CallResult.SUCCESS, "Writer created successfully", duration);
-                } else {
-                    String errorMsg = mapNativeErrorCode(result, operation);
-                    if (attempt == maxRetries) {
-                        errorCount.incrementAndGet();
-                        return new NativeCallResult(CallResult.NATIVE_ERROR, errorMsg);
-                    }
-                    // Retry on certain error codes
-                    Thread.sleep(100 * (attempt + 1)); // Exponential backoff
-                }
-            } catch (OutOfMemoryError e) {
+            if (result == 0) {
+                // Success - track writer state
+                writerStates.put(fileName, new WriterState(fileName, System.currentTimeMillis()));
+                successCount.incrementAndGet();
+                return new NativeCallResult(CallResult.SUCCESS, "Writer created successfully", duration);
+            } else {
+                String errorMsg = mapNativeErrorCode(result, operation);
                 errorCount.incrementAndGet();
-                return new NativeCallResult(CallResult.MEMORY_ERROR, "Out of memory: " + e.getMessage());
-            } catch (Exception e) {
-                if (attempt == maxRetries) {
-                    errorCount.incrementAndGet();
-                    return new NativeCallResult(CallResult.NATIVE_ERROR, "Unexpected error: " + e.getMessage());
-                }
-                try {
-                    Thread.sleep(100 * (attempt + 1));
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
+                return new NativeCallResult(CallResult.NATIVE_ERROR, errorMsg);
             }
+        } catch (OutOfMemoryError e) {
+            errorCount.incrementAndGet();
+            return new NativeCallResult(CallResult.MEMORY_ERROR, "Out of memory: " + e.getMessage());
+        } catch (Exception e) {
+            errorCount.incrementAndGet();
+            return new NativeCallResult(CallResult.NATIVE_ERROR, "Unexpected error: " + e.getMessage());
         }
-
-        errorCount.incrementAndGet();
-        return new NativeCallResult(CallResult.NATIVE_ERROR, "Max retries exceeded");
     }
 
     /**
@@ -132,52 +111,36 @@ public class NativeCallWrapper {
                 return new NativeCallResult(CallResult.VALIDATION_ERROR, "Invalid memory addresses");
             }
 
-            // Execute native call with retry logic
-            for (int attempt = 0; attempt <= maxRetries; attempt++) {
-                try {
-                    long startTime = System.nanoTime();
-                    int result = RustBridge.write(fileName, arrayAddress, schemaAddress);
-                    long duration = System.nanoTime() - startTime;
+            // Execute native call
+            try {
+                long startTime = System.nanoTime();
+                int result = RustBridge.write(fileName, arrayAddress, schemaAddress);
+                long duration = System.nanoTime() - startTime;
 
-                    if (result == 0) {
-                        // Success - update writer state
-                        WriterState state = writerStates.get(fileName);
-                        if (state != null) {
-                            state.recordWrite(managedVSR.getRowCount());
-                        }
-                        successCount.incrementAndGet();
-                        return new NativeCallResult(CallResult.SUCCESS, "Data written successfully", duration);
-                    } else {
-                        String errorMsg = mapNativeErrorCode(result, operation);
-                        if (attempt == maxRetries) {
-                            errorCount.incrementAndGet();
-                            return new NativeCallResult(CallResult.NATIVE_ERROR, errorMsg);
-                        }
-                        Thread.sleep(100 * (attempt + 1));
+                if (result == 0) {
+                    // Success - update writer state
+                    WriterState state = writerStates.get(fileName);
+                    if (state != null) {
+                        state.recordWrite(managedVSR.getRowCount());
                     }
-                } catch (OutOfMemoryError e) {
+                    successCount.incrementAndGet();
+                    return new NativeCallResult(CallResult.SUCCESS, "Data written successfully", duration);
+                } else {
+                    String errorMsg = mapNativeErrorCode(result, operation);
                     errorCount.incrementAndGet();
-                    return new NativeCallResult(CallResult.MEMORY_ERROR, "Out of memory: " + e.getMessage());
-                } catch (Exception e) {
-                    if (attempt == maxRetries) {
-                        errorCount.incrementAndGet();
-                        return new NativeCallResult(CallResult.NATIVE_ERROR, "Unexpected error: " + e.getMessage());
-                    }
-                    try {
-                        Thread.sleep(100 * (attempt + 1));
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
+                    return new NativeCallResult(CallResult.NATIVE_ERROR, errorMsg);
                 }
+            } catch (OutOfMemoryError e) {
+                errorCount.incrementAndGet();
+                return new NativeCallResult(CallResult.MEMORY_ERROR, "Out of memory: " + e.getMessage());
+            } catch (Exception e) {
+                errorCount.incrementAndGet();
+                return new NativeCallResult(CallResult.NATIVE_ERROR, "Unexpected error: " + e.getMessage());
             }
         } catch (Exception e) {
             errorCount.incrementAndGet();
             return new NativeCallResult(CallResult.NATIVE_ERROR, "Failed to export VSR: " + e.getMessage());
         }
-
-        errorCount.incrementAndGet();
-        return new NativeCallResult(CallResult.NATIVE_ERROR, "Max retries exceeded");
     }
 
     /**

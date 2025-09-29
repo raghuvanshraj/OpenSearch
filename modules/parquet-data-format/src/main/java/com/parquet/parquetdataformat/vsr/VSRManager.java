@@ -26,6 +26,7 @@ import java.util.Map;
 
 import org.apache.arrow.vector.*;
 import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.opensearch.index.engine.exec.WriteResult;
 
 /**
  * Manages VectorSchemaRoot lifecycle with integrated memory management and native call wrappers.
@@ -87,100 +88,38 @@ public class VSRManager {
         }
     }
 
-    public Object addDoc(ParquetDocumentInput document) throws IOException {
-        // Check for VSR rotation before processing document
-        checkAndHandleVSRRotation();
-        
+    public WriteResult addToManagedVSR(ParquetDocumentInput document) throws IOException {
+        // Ensure we have an active VSR (handle case where getActiveVSR() returns null)
+        if (managedVSR == null) {
+            managedVSR = vsrPool.getActiveVSR();
+            if (managedVSR == null) {
+                throw new IOException("No active VSR available");
+            }
+            reinitializeFieldVectorMap();
+        }
+
         // Ensure VSR is in ACTIVE state for modifications
         if (managedVSR.getState() != VSRState.ACTIVE) {
             throw new IOException("Cannot add document - VSR is not active: " + managedVSR.getState());
         }
 
-        System.out.println("[JAVA] addDoc called, current row count: " + managedVSR.getRowCount());
+        System.out.println("[JAVA] addToManagedVSR called, current row count: " + managedVSR.getRowCount());
+
         try {
-            Map<ParquetFieldType, Object> fields = document.getFinalInput().getFields();
-            System.out.println("[JAVA] Document has " + fields.size() + " fields");
+            // Since ParquetDocumentInput now works directly with ManagedVSR,
+            // fields should already be populated in vectors via addField() calls.
+            // We just need to finalize the document by calling addToWriter()
+            // which will increment the row count.
+            WriteResult result = document.addToWriter();
 
-            int rowIndex = managedVSR.getRowCount();
-
-            for (Map.Entry<ParquetFieldType, Object> entry : fields.entrySet()) {
-                System.out.println("[JAVA] Processing field: " + entry.getKey().getName() + " = " + entry.getValue());
-                FieldVector vector = fieldVectorMap.get(entry.getKey().getName());
-                if (vector == null) {
-                    throw new IOException("No vector found for field: " + entry.getKey().getName());
-                }
-
-                ArrowType type = entry.getKey().getType();
-                Object value = entry.getValue();
-
-                // Set vector capacity first, let Arrow manage counts
-                vector.setValueCount(rowIndex + 1);
-
-                switch (type) {
-                    case ArrowType.Int intType -> {
-                        if (intType.getBitWidth() == 32) {
-                            IntVector intVector = (IntVector) vector;
-                            if (value == null) {
-                                intVector.setNull(rowIndex);
-                            } else {
-                                intVector.setSafe(rowIndex, (Integer) value);
-                            }
-                        } else if (intType.getBitWidth() == 64) {
-                            BigIntVector bigIntVector = (BigIntVector) vector;
-                            if (value == null) {
-                                bigIntVector.setNull(rowIndex);
-                            } else {
-                                bigIntVector.setSafe(rowIndex, (Long) value);
-                            }
-                        }
-                    }
-                    case ArrowType.FloatingPoint floatType -> {
-                        switch (floatType.getPrecision()) {
-                            case SINGLE -> {
-                                Float4Vector floatVector = (Float4Vector) vector;
-                                if (value == null) {
-                                    floatVector.setNull(rowIndex);
-                                } else {
-                                    floatVector.setSafe(rowIndex, (Float) value);
-                                }
-                            }
-                            case DOUBLE -> {
-                                Float8Vector doubleVector = (Float8Vector) vector;
-                                if (value == null) {
-                                    doubleVector.setNull(rowIndex);
-                                } else {
-                                    doubleVector.setSafe(rowIndex, (Double) value);
-                                }
-                            }
-                        }
-                    }
-                    case ArrowType.Utf8 utf8 -> {
-                        VarCharVector strVector = (VarCharVector) vector;
-                        if (value == null) {
-                            strVector.setNull(rowIndex);
-                        } else {
-                            byte[] bytes = ((String) value).getBytes(StandardCharsets.UTF_8);
-                            strVector.setSafe(rowIndex, bytes);
-                        }
-                    }
-                    case ArrowType.Bool bool -> {
-                        BitVector bitVector = (BitVector) vector;
-                        if (value == null) {
-                            bitVector.setNull(rowIndex);
-                        } else {
-                            bitVector.setSafe(rowIndex, ((Boolean) value) ? 1 : 0);
-                        }
-                    }
-                    case null, default -> throw new UnsupportedOperationException("Unsupported ArrowType: " + type);
-                }
-            }
-
-            // Use managed VSR's thread-safe setRowCount instead of manual increment
-            managedVSR.setRowCount(rowIndex + 1);
             System.out.println("[JAVA] After adding document, row count: " + managedVSR.getRowCount());
-            return null;
+
+            // Check for VSR rotation AFTER successful document processing
+            handleVSRRotationAfterAddToManagedVSR();
+
+            return result;
         } catch (Exception e) {
-            System.out.println("[JAVA] ERROR in addDoc: " + e.getMessage());
+            System.out.println("[JAVA] ERROR in addToManagedVSR: " + e.getMessage());
             throw new IOException("Failed to add document: " + e.getMessage(), e);
         }
     }
@@ -245,28 +184,82 @@ public class VSRManager {
     }
 
     /**
+     * Handles VSR rotation after successful document addition.
+     * Checks if rotation is needed and immediately processes any frozen VSR.
+     */
+    private void handleVSRRotationAfterAddToManagedVSR() throws IOException {
+        try {
+            // Check if rotation is needed and perform it if safe
+            boolean rotated = vsrPool.maybeRotateActiveVSR();
+
+            if (rotated) {
+                System.out.println("[JAVA] VSR rotation occurred after document addition");
+
+                // Get the frozen VSR that was just created by rotation
+                ManagedVSR frozenVSR = vsrPool.getFrozenVSR();
+                if (frozenVSR != null) {
+                    System.out.println("[JAVA] Processing frozen VSR: " + frozenVSR.getId() +
+                                     " with " + frozenVSR.getRowCount() + " rows");
+
+                    // Write the frozen VSR data immediately
+                    frozenVSR.setState(VSRState.FLUSHING);
+                    NativeCallWrapper.NativeCallResult result = nativeWrapper.writeData(fileName, frozenVSR);
+                    if (!result.isSuccess()) {
+                        throw new IOException("Failed to write rotated VSR data: " + result.getMessage());
+                    }
+
+                    System.out.println("[JAVA] Successfully wrote frozen VSR data");
+
+                    // Complete the VSR processing
+                    vsrPool.completeVSR(frozenVSR);
+                } else {
+                    System.err.println("[JAVA] WARNING: Rotation occurred but no frozen VSR found");
+                }
+
+                // Update to new active VSR
+                managedVSR = vsrPool.getActiveVSR();
+                if (managedVSR == null) {
+                    throw new IOException("No active VSR available after rotation");
+                }
+
+                // Reinitialize field vector map with new VSR
+                reinitializeFieldVectorMap();
+
+                System.out.println("[JAVA] VSR rotation completed, new active VSR: " + managedVSR.getId() +
+                                 ", row count: " + managedVSR.getRowCount());
+            }
+        } catch (IOException e) {
+            System.err.println("[JAVA] Error during VSR rotation: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
      * Checks if VSR rotation is needed based on row count and memory pressure.
      * If rotation occurs, updates the managed VSR reference and reinitializes field vectors.
+     *
+     * @deprecated Use handleVSRRotationAfterAddToManagedVSR() instead for safer rotation after document processing
      */
+    @Deprecated
     private void checkAndHandleVSRRotation() throws IOException {
         // Get active VSR from pool - this will trigger rotation if needed
         ManagedVSR currentActive = vsrPool.getActiveVSR();
-        
+
         // Check if we got a different VSR (rotation occurred)
         if (currentActive != managedVSR) {
             System.out.println("[JAVA] VSR rotation detected, updating references");
-            
+
             // Update the managed VSR reference
             managedVSR = currentActive;
-            
+
             // Reinitialize field vector map with new VSR
             reinitializeFieldVectorMap();
-            
+
             // Note: Writer initialization is not needed per VSR as it's per file
             System.out.println("[JAVA] VSR rotation completed, new row count: " + managedVSR.getRowCount());
         }
     }
-    
+
     /**
      * Reinitializes the field vector map with the current managed VSR.
      * Called after VSR rotation to update vector references.
@@ -284,5 +277,14 @@ public class VSRManager {
             // Vector is already properly typed from ManagedVSR.getVector()
             fieldVectorMap.put(fieldName, fieldVector);
         }
+    }
+
+    /**
+     * Gets the current active ManagedVSR for document input creation.
+     *
+     * @return The current managed VSR instance
+     */
+    public ManagedVSR getActiveManagedVSR() {
+        return managedVSR;
     }
 }
