@@ -8,8 +8,10 @@
 
 package org.opensearch.index.engine.exec.bridge;
 
+import org.opensearch.common.annotation.PublicApi;
 import org.opensearch.index.seqno.SeqNoStats;
 
+@PublicApi(since = "1.0.0")
 public interface CheckpointState {
 
     /**

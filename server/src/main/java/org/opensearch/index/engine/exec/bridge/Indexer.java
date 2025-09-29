@@ -8,6 +8,7 @@
 
 package org.opensearch.index.engine.exec.bridge;
 
+import org.opensearch.common.annotation.PublicApi;
 import org.opensearch.index.engine.Engine;
 import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.engine.SafeCommitInfo;
@@ -19,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
+@PublicApi(since = "1.0.0")
 public interface Indexer {
 
     Engine.IndexResult index(Engine.Index index) throws IOException;

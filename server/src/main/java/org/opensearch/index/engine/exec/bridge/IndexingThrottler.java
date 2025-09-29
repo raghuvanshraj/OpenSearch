@@ -8,6 +8,9 @@
 
 package org.opensearch.index.engine.exec.bridge;
 
+import org.opensearch.common.annotation.PublicApi;
+
+@PublicApi(since = "1.0.0")
 public interface IndexingThrottler {
 
     /**
