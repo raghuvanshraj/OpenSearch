@@ -13,7 +13,7 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
-import com.parquet.parquetdataformat.bridge.NativeCallWrapper;
+import com.parquet.parquetdataformat.bridge.RustBridge;
 import com.parquet.parquetdataformat.converter.ParquetFieldType;
 import com.parquet.parquetdataformat.bridge.ArrowExport;
 import com.parquet.parquetdataformat.memory.ArrowBufferPool;
@@ -37,7 +37,7 @@ import org.opensearch.index.engine.exec.WriteResult;
  *   <li>{@link ManagedVSR} - Thread-safe VSR with state management</li>
  *   <li>{@link VSRPool} - Resource pooling for VSRs</li>
  *   <li>{@link ArrowBufferPool} - Memory management with pressure monitoring</li>
- *   <li>{@link NativeCallWrapper} - Safe JNI calls to Rust backend</li>
+ *   <li>{@link RustBridge} - Direct JNI calls to Rust backend</li>
  * </ul>
  */
 public class VSRManager {
@@ -47,7 +47,6 @@ public class VSRManager {
     private final BufferAllocator allocator;
     private final String fileName;
     private final VSRPool vsrPool;
-    private final NativeCallWrapper nativeWrapper;
 
     public VSRManager(String fileName, Schema schema) {
         this.fileName = fileName;
@@ -61,8 +60,6 @@ public class VSRManager {
         // Create VSR pool
         this.vsrPool = new VSRPool("pool-" + fileName, schema, bufferPool, memoryMonitor);
 
-        // Create native call wrapper
-        this.nativeWrapper = new NativeCallWrapper(org.opensearch.common.settings.Settings.EMPTY);
 
         // Get active VSR from pool
         this.managedVSR = vsrPool.getActiveVSR();
@@ -77,11 +74,8 @@ public class VSRManager {
             try (ArrowExport export = managedVSR.exportToArrow()) {
                 long schemaAddress = export.getSchemaAddress();
 
-                // Use safer native call wrapper
-                NativeCallWrapper.NativeCallResult result = nativeWrapper.createWriter(fileName, schemaAddress);
-                if (!result.isSuccess()) {
-                    throw new RuntimeException("Failed to create writer: " + result.getMessage());
-                }
+                // Direct native call - RustBridge handles all validation
+                RustBridge.createWriter(fileName, schemaAddress);
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize Parquet writer: " + e.getMessage(), e);
@@ -140,10 +134,9 @@ public class VSRManager {
             // Transition to FLUSHING state
             managedVSR.setState(VSRState.FLUSHING);
 
-            // Use managed VSR export through native call wrapper
-            NativeCallWrapper.NativeCallResult result = nativeWrapper.writeData(fileName, managedVSR);
-            if (!result.isSuccess()) {
-                throw new IOException("Failed to write data: " + result.getMessage());
+            // Direct native call - write the managed VSR data
+            try (ArrowExport export = managedVSR.exportToArrow()) {
+                RustBridge.write(fileName, export.getArrayAddress(), export.getSchemaAddress());
             }
             System.out.println("[JAVA] Successfully flushed data");
 
@@ -156,15 +149,12 @@ public class VSRManager {
 
     public void close() {
         try {
-            // Use safer native call wrapper
-            NativeCallWrapper.NativeCallResult closeResult = nativeWrapper.closeWriter(fileName);
-            if (!closeResult.isSuccess()) {
-                System.err.println("Warning: Failed to close writer: " + closeResult.getMessage());
-            }
-
-            NativeCallWrapper.NativeCallResult flushResult = nativeWrapper.flushToDisk(fileName);
-            if (!flushResult.isSuccess()) {
-                System.err.println("Warning: Failed to flush to disk: " + flushResult.getMessage());
+            // Direct native calls
+            try {
+                RustBridge.closeWriter(fileName);
+                RustBridge.flushToDisk(fileName);
+            } catch (IOException e) {
+                System.err.println("Warning: Failed to close/flush writer: " + e.getMessage());
             }
 
             // Complete VSR processing and cleanup
@@ -203,9 +193,8 @@ public class VSRManager {
 
                     // Write the frozen VSR data immediately
                     frozenVSR.setState(VSRState.FLUSHING);
-                    NativeCallWrapper.NativeCallResult result = nativeWrapper.writeData(fileName, frozenVSR);
-                    if (!result.isSuccess()) {
-                        throw new IOException("Failed to write rotated VSR data: " + result.getMessage());
+                    try (ArrowExport export = frozenVSR.exportToArrow()) {
+                        RustBridge.write(fileName, export.getArrayAddress(), export.getSchemaAddress());
                     }
 
                     System.out.println("[JAVA] Successfully wrote frozen VSR data");

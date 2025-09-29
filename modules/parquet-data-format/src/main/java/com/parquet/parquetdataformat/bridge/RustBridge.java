@@ -78,8 +78,24 @@ public class RustBridge {
         }
     }
 
-    public static native int createWriter(String file, long schemaAddress);
-    public static native int write(String file, long arrayAddress, long schemaAddress);
-    public static native int closeWriter(String file);
-    public static native int flushToDisk(String file);
+    // Enhanced native methods that handle validation and provide better error reporting
+    public static native void createWriter(String file, long schemaAddress) throws IOException;
+    public static native void write(String file, long arrayAddress, long schemaAddress) throws IOException;
+    public static native void closeWriter(String file) throws IOException;
+    public static native void flushToDisk(String file) throws IOException;
+    
+    // State and metrics methods handled on Rust side
+    public static native boolean writerExists(String file);
+    public static native long getWriteCount(String file);
+    public static native long getTotalRows(String file);
+    public static native String[] getActiveWriters();
+    
+    // Validation helpers that could be implemented natively for better performance
+    public static boolean isValidFileName(String fileName) {
+        return fileName != null && !fileName.trim().isEmpty();
+    }
+    
+    public static boolean isValidMemoryAddress(long address) {
+        return address != 0;
+    }
 }
