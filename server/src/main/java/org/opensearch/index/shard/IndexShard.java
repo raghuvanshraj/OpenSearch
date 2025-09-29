@@ -1574,7 +1574,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             return new MergeStats();
         }
         final MergeStats mergeStats = engine.getMergeStats();
-        mergeStats.addUnreferencedFileCleanUpStats(engine.unreferencedFileCleanUpsPerformed());
+//        mergeStats.addUnreferencedFileCleanUpStats(engine.unreferencedFileCleanUpsPerformed());
         return mergeStats;
     }
 

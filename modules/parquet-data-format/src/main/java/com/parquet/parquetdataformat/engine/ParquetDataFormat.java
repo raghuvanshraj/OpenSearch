@@ -6,11 +6,11 @@ import org.opensearch.index.engine.exec.DataFormat;
 
 /**
  * Data format implementation for Parquet-based document storage.
- * 
+ *
  * <p>This class integrates with OpenSearch's DataFormat interface to provide
  * Parquet file format support within the OpenSearch indexing pipeline. It
  * defines the configuration and behavior for the "parquet" data format.
- * 
+ *
  * <p>The implementation provides hooks for:
  * <ul>
  *   <li>Data format specific settings configuration</li>
@@ -18,7 +18,7 @@ import org.opensearch.index.engine.exec.DataFormat;
  *   <li>Store configuration for Parquet-specific optimizations</li>
  *   <li>Format identification through the "parquet" name</li>
  * </ul>
- * 
+ *
  * <p>This class serves as the entry point for registering Parquet format
  * capabilities with OpenSearch's execution engine framework, allowing
  * the system to recognize and utilize Parquet-based storage operations.
@@ -30,7 +30,7 @@ public class ParquetDataFormat implements DataFormat {
     }
 
     @Override
-    public Setting<Settings> clusterLevelDataFormatSettings() {
+    public Setting<Settings> clusterLeveldataFormatSettings() {
         return null;
     }
 

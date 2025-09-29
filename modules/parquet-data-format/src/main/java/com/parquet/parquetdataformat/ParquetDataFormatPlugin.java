@@ -24,11 +24,11 @@ import java.io.IOException;
 
 /**
  * OpenSearch plugin that provides Parquet data format support for indexing operations.
- * 
+ *
  * <p>This plugin implements the Project Mustang design for writing OpenSearch documents
  * to Parquet format using Apache Arrow as the intermediate representation and a native
  * Rust backend for high-performance Parquet file generation.
- * 
+ *
  * <p>Key features provided by this plugin:
  * <ul>
  *   <li>Integration with OpenSearch's DataFormatPlugin interface</li>
@@ -37,12 +37,12 @@ import java.io.IOException;
  *   <li>Memory pressure monitoring and backpressure mechanisms</li>
  *   <li>Columnar storage optimization for analytical workloads</li>
  * </ul>
- * 
+ *
  * <p>The plugin orchestrates the complete pipeline from OpenSearch document indexing
  * through Arrow-based batching to final Parquet file generation. It provides both
  * the execution engine interface for OpenSearch integration and testing utilities
  * for development purposes.
- * 
+ *
  * <p>Architecture components:
  * <ul>
  *   <li>{@link ParquetExecutionEngine} - Main execution engine implementation</li>
@@ -54,8 +54,9 @@ import java.io.IOException;
 public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin {
 
     @Override
-    public IndexingExecutionEngine<ParquetDataFormat> indexingEngine() {
-        return new ParquetExecutionEngine(DummyDataUtils.getSchema());
+    @SuppressWarnings("unchecked")
+    public <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine() {
+        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(DummyDataUtils.getSchema());
     }
 
     @Override
@@ -66,20 +67,21 @@ public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin 
     // for testing locally only
     public void indexDataToParquetEngine() throws IOException {
         //Create Engine (take Schema as Input)
-        IndexingExecutionEngine<ParquetDataFormat> indexingExecutionEngine = indexingEngine();
-        //Create Writer
-        ParquetWriter writer = (ParquetWriter) indexingExecutionEngine.createWriter();
-        for (int i=0;i<10;i++) {
-            //Get DocumentInput
-            ParquetDocumentInput documentInput = (ParquetDocumentInput) writer.newDocumentInput();
-            //Populate data
-            DummyDataUtils.populateDocumentInput(documentInput);
-            //Write document
-            writer.addDoc(documentInput);
-        }
-        writer.flush(null);
-        writer.close();
-        //refresh engine
-        indexingExecutionEngine.refresh(null);
+//        IndexingExecutionEngine<ParquetDataFormat> indexingExecutionEngine = indexingEngine();
+//        //Create Writer
+//        ParquetWriter writer = (ParquetWriter) indexingExecutionEngine.createWriter();
+//        for (int i=0;i<10;i++) {
+//            //Get DocumentInput
+//            DocumentInput documentInput = writer.newDocumentInput();
+//            ParquetDocumentInput parquetDocumentInput = (ParquetDocumentInput) documentInput;
+//            //Populate data
+//            DummyDataUtils.populateDocumentInput(parquetDocumentInput);
+//            //Write document
+//            writer.addDoc(parquetDocumentInput);
+//        }
+//        writer.flush(null);
+//        writer.close();
+//        //refresh engine
+//        indexingExecutionEngine.refresh(null);
     }
 }
