@@ -1,7 +1,10 @@
 package com.parquet.parquetdataformat.vsr;
 
 import com.parquet.parquetdataformat.bridge.ArrowExport;
+import org.apache.arrow.memory.ArrowBuf;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.c.ArrowArray;
@@ -11,6 +14,8 @@ import org.apache.arrow.c.Data;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.arrow.vector.BitVectorHelper.byteIndex;
 
 /**
  * Managed wrapper around VectorSchemaRoot that handles state transitions
@@ -208,4 +213,33 @@ public class ManagedVSR implements AutoCloseable {
             id, state.get(), getRowCount(), isImmutable());
     }
 
+    public static void main(String[] args) {
+        RootAllocator allocator = new RootAllocator();
+        BigIntVector vector = new BigIntVector("vector", allocator);
+        vector.allocateNew(10);
+        vector.set(0, 100);  // Set position 0
+//        vector.setNull(1);
+        vector.set(2, 300);  // Set position 2
+// Position 1 is not set!
+        vector.setValueCount(3);  // Claims vector has 3 elements
+
+// Position 1 now contains undefined data
+//        long value = vector.get(1);  // Could be any value!
+        System.out.println(readBit(vector.getValidityBuffer(), 0));
+        System.out.println(readBit(vector.getValidityBuffer(), 1));
+        System.out.println(readBit(vector.getValidityBuffer(), 2));
+        System.out.println(readBit(vector.getValidityBuffer(), 3));
+    }
+
+    public static byte readBit(ArrowBuf validityBuffer, long index) {
+        // it can be observed that some logic is duplicate of the logic in setValidityBit.
+        // this is because JIT cannot always remove the if branch in setValidityBit,
+        // so we give a dedicated implementation for setting bits.
+        final long byteIndex = byteIndex(index);
+
+        // the byte is promoted to an int, because according to Java specification,
+        // bytes will be promoted to ints automatically, upon expression evaluation.
+        // by promoting it manually, we avoid the unnecessary conversions.
+        return validityBuffer.getByte(byteIndex);
+    }
 }
