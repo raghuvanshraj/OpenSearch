@@ -1,5 +1,6 @@
 package com.parquet.parquetdataformat.writer;
 
+import com.parquet.parquetdataformat.fields.ParquetFieldUtil;
 import org.opensearch.index.engine.exec.DocumentInput;
 import org.opensearch.index.engine.exec.WriteResult;
 import org.opensearch.index.mapper.MappedFieldType;
@@ -36,83 +37,16 @@ import static com.parquet.parquetdataformat.converter.FieldTypeConverter.convert
  */
 public class ParquetDocumentInput implements DocumentInput<ManagedVSR> {
     private final ManagedVSR managedVSR;
+    private final ParquetFieldUtil parquetFieldUtil;
 
     public ParquetDocumentInput(ManagedVSR managedVSR) {
         this.managedVSR = managedVSR;
+        this.parquetFieldUtil = new ParquetFieldUtil();
     }
 
     @Override
     public void addField(MappedFieldType fieldType, Object value) {
-        // Convert OpenSearch field type to Parquet field type
-        ParquetFieldType parquetFieldType = convertToParquetFieldType(fieldType);
-
-        // Get the appropriate field vector from the ManagedVSR
-        FieldVector fieldVector = managedVSR.getVector(parquetFieldType.getName());
-
-        if (fieldVector != null) {
-            // Get current row position and populate the vector
-            int currentRow = managedVSR.getRowCount();
-            ArrowType type = parquetFieldType.getType();
-
-            // Populate the field vector based on Arrow type
-            switch (type) {
-                case ArrowType.Int intType -> {
-                    if (intType.getBitWidth() == 32) {
-                        IntVector intVector = (IntVector) fieldVector;
-                        if (value == null) {
-                            intVector.setNull(currentRow);
-                        } else {
-                            intVector.setSafe(currentRow, (Integer) value);
-                        }
-                    } else if (intType.getBitWidth() == 64) {
-                        BigIntVector bigIntVector = (BigIntVector) fieldVector;
-                        if (value == null) {
-                            bigIntVector.setNull(currentRow);
-                        } else {
-                            bigIntVector.setSafe(currentRow, (Long) value);
-                        }
-                    }
-                }
-                case ArrowType.FloatingPoint floatType -> {
-                    switch (floatType.getPrecision()) {
-                        case SINGLE -> {
-                            Float4Vector floatVector = (Float4Vector) fieldVector;
-                            if (value == null) {
-                                floatVector.setNull(currentRow);
-                            } else {
-                                floatVector.setSafe(currentRow, (Float) value);
-                            }
-                        }
-                        case DOUBLE -> {
-                            Float8Vector doubleVector = (Float8Vector) fieldVector;
-                            if (value == null) {
-                                doubleVector.setNull(currentRow);
-                            } else {
-                                doubleVector.setSafe(currentRow, (Double) value);
-                            }
-                        }
-                    }
-                }
-                case ArrowType.Utf8 utf8 -> {
-                    VarCharVector strVector = (VarCharVector) fieldVector;
-                    if (value == null) {
-                        strVector.setNull(currentRow);
-                    } else {
-                        byte[] bytes = ((String) value).getBytes(StandardCharsets.UTF_8);
-                        strVector.setSafe(currentRow, bytes);
-                    }
-                }
-                case ArrowType.Bool bool -> {
-                    BitVector bitVector = (BitVector) fieldVector;
-                    if (value == null) {
-                        bitVector.setNull(currentRow);
-                    } else {
-                        bitVector.setSafe(currentRow, ((Boolean) value) ? 1 : 0);
-                    }
-                }
-                case null, default -> throw new UnsupportedOperationException("Unsupported ArrowType: " + type);
-            }
-        }
+        parquetFieldUtil.getParquetField(fieldType.name()).createField(fieldType, managedVSR, value);
     }
 
     @Override
@@ -137,7 +71,7 @@ public class ParquetDocumentInput implements DocumentInput<ManagedVSR> {
         // The ManagedVSR is owned and managed by VSRManager/VSRPool
         // VSRManager.close() -> vsrPool.completeVSR(managedVSR) handles cleanup
         // ParquetDocumentInput only holds a reference for field population
-        
+
         // No cleanup needed here - VSRManager handles the ManagedVSR lifecycle
     }
 }

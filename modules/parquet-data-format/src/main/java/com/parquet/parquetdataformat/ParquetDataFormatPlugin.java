@@ -7,6 +7,7 @@
  */
 package com.parquet.parquetdataformat;
 
+import com.parquet.parquetdataformat.fields.ParquetFieldUtil;
 import com.parquet.parquetdataformat.writer.ParquetDocumentInput;
 import com.parquet.parquetdataformat.writer.ParquetWriter;
 import org.opensearch.index.engine.DataFormatPlugin;
@@ -56,7 +57,7 @@ public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin 
     @Override
     @SuppressWarnings("unchecked")
     public <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine() {
-        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(DummyDataUtils.getSchema());
+        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(ParquetFieldUtil.getSchema());
     }
 
     @Override
@@ -67,21 +68,21 @@ public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin 
     // for testing locally only
     public void indexDataToParquetEngine() throws IOException {
         //Create Engine (take Schema as Input)
-//        IndexingExecutionEngine<ParquetDataFormat> indexingExecutionEngine = indexingEngine();
-//        //Create Writer
-//        ParquetWriter writer = (ParquetWriter) indexingExecutionEngine.createWriter();
-//        for (int i=0;i<10;i++) {
-//            //Get DocumentInput
-//            DocumentInput documentInput = writer.newDocumentInput();
-//            ParquetDocumentInput parquetDocumentInput = (ParquetDocumentInput) documentInput;
-//            //Populate data
-//            DummyDataUtils.populateDocumentInput(parquetDocumentInput);
-//            //Write document
-//            writer.addDoc(parquetDocumentInput);
-//        }
-//        writer.flush(null);
-//        writer.close();
-//        //refresh engine
-//        indexingExecutionEngine.refresh(null);
+        IndexingExecutionEngine<ParquetDataFormat> indexingExecutionEngine = indexingEngine();
+        //Create Writer
+        ParquetWriter writer = (ParquetWriter) indexingExecutionEngine.createWriter();
+        for (int i=0;i<10;i++) {
+            //Get DocumentInput
+            DocumentInput documentInput = writer.newDocumentInput();
+            ParquetDocumentInput parquetDocumentInput = (ParquetDocumentInput) documentInput;
+            //Populate data
+            DummyDataUtils.populateDocumentInput(parquetDocumentInput);
+            //Write document
+            writer.addDoc(parquetDocumentInput);
+        }
+        writer.flush(null);
+        writer.close();
+        //refresh engine
+        indexingExecutionEngine.refresh(null);
     }
 }
