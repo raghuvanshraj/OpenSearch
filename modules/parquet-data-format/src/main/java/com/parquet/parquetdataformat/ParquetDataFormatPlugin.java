@@ -68,21 +68,21 @@ public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin 
     // for testing locally only
     public void indexDataToParquetEngine() throws IOException {
         //Create Engine (take Schema as Input)
-        IndexingExecutionEngine<ParquetDataFormat> indexingExecutionEngine = indexingEngine();
-        //Create Writer
-        ParquetWriter writer = (ParquetWriter) indexingExecutionEngine.createWriter();
-        for (int i=0;i<10;i++) {
-            //Get DocumentInput
-            DocumentInput documentInput = writer.newDocumentInput();
-            ParquetDocumentInput parquetDocumentInput = (ParquetDocumentInput) documentInput;
-            //Populate data
-            DummyDataUtils.populateDocumentInput(parquetDocumentInput);
-            //Write document
-            writer.addDoc(parquetDocumentInput);
-        }
-        writer.flush(null);
-        writer.close();
-        //refresh engine
-        indexingExecutionEngine.refresh(null);
+//        IndexingExecutionEngine<ParquetDataFormat> indexingExecutionEngine = indexingEngine();
+//        //Create Writer
+//        ParquetWriter writer = (ParquetWriter) indexingExecutionEngine.createWriter();
+//        for (int i=0;i<10;i++) {
+//            //Get DocumentInput
+//            DocumentInput documentInput = writer.newDocumentInput();
+//            ParquetDocumentInput parquetDocumentInput = (ParquetDocumentInput) documentInput;
+//            //Populate data
+//            DummyDataUtils.populateDocumentInput(parquetDocumentInput);
+//            //Write document
+//            writer.addDoc(parquetDocumentInput);
+//        }
+//        writer.flush(null);
+//        writer.close();
+//        //refresh engine
+//        indexingExecutionEngine.refresh(null);
     }
 }

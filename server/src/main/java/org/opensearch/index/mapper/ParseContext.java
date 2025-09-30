@@ -39,6 +39,7 @@ import org.opensearch.OpenSearchParseException;
 import org.opensearch.common.annotation.PublicApi;
 import org.opensearch.core.xcontent.XContentParser;
 import org.opensearch.index.IndexSettings;
+import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -243,6 +244,11 @@ public abstract class ParseContext implements Iterable<ParseContext.Document> {
         }
 
         @Override
+        public CompositeDataFormatWriter.CompositeDocumentInput compositeDocumentInput() {
+            return in.compositeDocumentInput();
+        }
+
+        @Override
         protected void addDoc(Document doc) {
             in.addDoc(doc);
         }
@@ -393,6 +399,8 @@ public abstract class ParseContext implements Iterable<ParseContext.Document> {
 
         private final Set<String> ignoredFields = new HashSet<>();
 
+        private CompositeDataFormatWriter.CompositeDocumentInput compositeDocumentInput;
+
         public InternalParseContext(
             IndexSettings indexSettings,
             DocumentMapperParser docMapperParser,
@@ -456,6 +464,11 @@ public abstract class ParseContext implements Iterable<ParseContext.Document> {
         @Override
         public Document doc() {
             return this.document;
+        }
+
+        @Override
+        public CompositeDataFormatWriter.CompositeDocumentInput compositeDocumentInput() {
+            return null;
         }
 
         @Override
@@ -718,6 +731,7 @@ public abstract class ParseContext implements Iterable<ParseContext.Document> {
     public abstract Document rootDoc();
 
     public abstract Document doc();
+    public abstract CompositeDataFormatWriter.CompositeDocumentInput compositeDocumentInput();
 
     protected abstract void addDoc(Document doc);
 
