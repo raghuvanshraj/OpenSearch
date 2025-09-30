@@ -1,19 +1,12 @@
 package com.parquet.parquetdataformat.writer;
 
-import com.parquet.parquetdataformat.fields.ParquetFieldUtil;
+import com.parquet.parquetdataformat.fields.ArrowFieldRegistry;
 import org.opensearch.index.engine.exec.DocumentInput;
 import org.opensearch.index.engine.exec.WriteResult;
 import org.opensearch.index.mapper.MappedFieldType;
 import com.parquet.parquetdataformat.vsr.ManagedVSR;
-import com.parquet.parquetdataformat.converter.ParquetFieldType;
-import org.apache.arrow.vector.FieldVector;
-import org.apache.arrow.vector.types.pojo.ArrowType;
-import org.apache.arrow.vector.*;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-
-import static com.parquet.parquetdataformat.converter.FieldTypeConverter.convertToParquetFieldType;
 
 /**
  * Document input wrapper for Parquet-based document processing.
@@ -37,16 +30,14 @@ import static com.parquet.parquetdataformat.converter.FieldTypeConverter.convert
  */
 public class ParquetDocumentInput implements DocumentInput<ManagedVSR> {
     private final ManagedVSR managedVSR;
-    private final ParquetFieldUtil parquetFieldUtil;
 
     public ParquetDocumentInput(ManagedVSR managedVSR) {
         this.managedVSR = managedVSR;
-        this.parquetFieldUtil = new ParquetFieldUtil();
     }
 
     @Override
     public void addField(MappedFieldType fieldType, Object value) {
-        parquetFieldUtil.getParquetField(fieldType.name()).createField(fieldType, managedVSR, value);
+        ArrowFieldRegistry.getParquetField(fieldType.name()).createField(fieldType, managedVSR, value);
     }
 
     @Override
