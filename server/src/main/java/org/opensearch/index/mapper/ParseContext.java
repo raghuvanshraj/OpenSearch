@@ -408,6 +408,17 @@ public abstract class ParseContext implements Iterable<ParseContext.Document> {
             SourceToParse source,
             XContentParser parser
         ) {
+            this(indexSettings, docMapperParser, docMapper, source, parser, null);
+        }
+
+        public InternalParseContext(
+            IndexSettings indexSettings,
+            DocumentMapperParser docMapperParser,
+            DocumentMapper docMapper,
+            SourceToParse source,
+            XContentParser parser,
+            CompositeDataFormatWriter.CompositeDocumentInput compositeDocumentInput
+        ) {
             this.indexSettings = indexSettings;
             this.docMapper = docMapper;
             this.docMapperParser = docMapperParser;
@@ -425,6 +436,7 @@ public abstract class ParseContext implements Iterable<ParseContext.Document> {
             this.currentArrayDepth = 0L;
             this.maxAllowedFieldDepth = indexSettings.getMappingDepthLimit();
             this.maxAllowedArrayDepth = indexSettings.getMappingDepthLimit();
+            this.compositeDocumentInput = compositeDocumentInput;
         }
 
         @Override
@@ -468,7 +480,7 @@ public abstract class ParseContext implements Iterable<ParseContext.Document> {
 
         @Override
         public CompositeDataFormatWriter.CompositeDocumentInput compositeDocumentInput() {
-            return null;
+            return compositeDocumentInput;
         }
 
         @Override

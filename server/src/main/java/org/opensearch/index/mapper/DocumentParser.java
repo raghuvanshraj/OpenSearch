@@ -46,6 +46,7 @@ import org.opensearch.core.common.Strings;
 import org.opensearch.core.xcontent.MediaType;
 import org.opensearch.core.xcontent.XContentParser;
 import org.opensearch.index.IndexSettings;
+import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
 import org.opensearch.index.mapper.DynamicTemplate.XContentFieldType;
 
 import java.io.IOException;
@@ -76,6 +77,10 @@ final class DocumentParser {
     }
 
     ParsedDocument parseDocument(SourceToParse source, MetadataFieldMapper[] metadataFieldsMappers) throws MapperParsingException {
+        return parseDocument(source, metadataFieldsMappers, null);
+    }
+
+    ParsedDocument parseDocument(SourceToParse source, MetadataFieldMapper[] metadataFieldsMappers, CompositeDataFormatWriter.CompositeDocumentInput documentInput) throws MapperParsingException {
         final Mapping mapping = docMapper.mapping();
         final ParseContext.InternalParseContext context;
         final MediaType mediaType = source.getMediaType();
@@ -88,7 +93,7 @@ final class DocumentParser {
                 mediaType
             )
         ) {
-            context = new ParseContext.InternalParseContext(indexSettings, docMapperParser, docMapper, source, parser);
+            context = new ParseContext.InternalParseContext(indexSettings, docMapperParser, docMapper, source, parser, documentInput);
             validateStart(parser);
             internalParseDocument(mapping, metadataFieldsMappers, context, parser);
             validateEnd(parser);

@@ -19,6 +19,7 @@ import com.parquet.parquetdataformat.bridge.RustBridge;
 import com.parquet.parquetdataformat.engine.DummyDataUtils;
 import com.parquet.parquetdataformat.engine.ParquetDataFormat;
 import com.parquet.parquetdataformat.engine.ParquetExecutionEngine;
+import org.opensearch.plugins.DataSourcePlugin;
 import org.opensearch.plugins.Plugin;
 
 import java.io.IOException;
@@ -52,7 +53,7 @@ import java.io.IOException;
  *   <li>Memory management via {@link com.parquet.parquetdataformat.memory} package</li>
  * </ul>
  */
-public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin {
+public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin, DataSourcePlugin {
 
     @Override
     @SuppressWarnings("unchecked")
@@ -85,4 +86,5 @@ public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin 
 //        //refresh engine
 //        indexingExecutionEngine.refresh(null);
     }
+
 }
