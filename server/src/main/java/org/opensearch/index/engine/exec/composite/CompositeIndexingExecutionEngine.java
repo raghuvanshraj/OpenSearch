@@ -18,6 +18,7 @@ import org.opensearch.index.engine.exec.Writer;
 import org.opensearch.index.engine.exec.coord.Any;
 import org.opensearch.index.engine.exec.coord.DocumentWriterPool;
 import org.opensearch.index.engine.exec.text.TextEngine;
+import org.opensearch.index.mapper.MapperService;
 import org.opensearch.plugins.PluginsService;
 
 import java.io.IOException;
@@ -32,7 +33,7 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
     private DataFormat dataFormat;
     public final List<IndexingExecutionEngine<?>> delegates = new ArrayList<>();
 
-    public CompositeIndexingExecutionEngine(PluginsService pluginsService, Any dataformat) {
+    public CompositeIndexingExecutionEngine(MapperService mapperService, PluginsService pluginsService, Any dataformat) {
         this.dataFormat = dataformat;
         try {
             for (DataFormat dataFormat : dataformat.getDataFormats()) {
@@ -40,7 +41,7 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
                     .filter(curr -> curr.getDataFormat().equals(dataFormat))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("dataformat [" + dataFormat + "] is not registered."));
-                delegates.add(plugin.indexingEngine());
+                delegates.add(plugin.indexingEngine(mapperService));
             }
         } catch (NullPointerException e) {
             // my own testing

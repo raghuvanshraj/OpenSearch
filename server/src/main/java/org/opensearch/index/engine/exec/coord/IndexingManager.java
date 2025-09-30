@@ -18,6 +18,7 @@ import org.opensearch.index.engine.exec.WriteResult;
 import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
 import org.opensearch.index.engine.exec.composite.CompositeIndexingExecutionEngine;
 import org.opensearch.index.mapper.KeywordFieldMapper;
+import org.opensearch.index.mapper.MapperService;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,8 +30,8 @@ public class IndexingManager {  //Internal Engine
     private List<ReferenceManager.RefreshListener> refreshListeners = new ArrayList<>();
     private CatalogSnapshot catalogSnapshot;
 
-    public IndexingManager(/*MapperService mapperService, EngineConfig engineConfig*/) {
-        this.engine = new CompositeIndexingExecutionEngine(null, new Any(List.of(DataFormat.TEXT)));
+    public IndexingManager(MapperService mapperService/*, EngineConfig engineConfig*/) {
+        this.engine = new CompositeIndexingExecutionEngine(mapperService, null, new Any(List.of(DataFormat.TEXT)));
     }
 
     public CompositeDataFormatWriter.CompositeDocumentInput documentInput() throws IOException {
@@ -102,7 +103,7 @@ public class IndexingManager {  //Internal Engine
     }
 
     public static void main(String[] args) throws Exception {
-        IndexingManager coordinator = new IndexingManager();
+        IndexingManager coordinator = new IndexingManager(null);
 
         for (int i = 0; i < 5; i++) {
 

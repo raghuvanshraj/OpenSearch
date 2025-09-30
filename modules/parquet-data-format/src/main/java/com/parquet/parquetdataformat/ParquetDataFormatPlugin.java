@@ -19,6 +19,7 @@ import com.parquet.parquetdataformat.bridge.RustBridge;
 import com.parquet.parquetdataformat.engine.DummyDataUtils;
 import com.parquet.parquetdataformat.engine.ParquetDataFormat;
 import com.parquet.parquetdataformat.engine.ParquetExecutionEngine;
+import org.opensearch.index.mapper.MapperService;
 import org.opensearch.plugins.Plugin;
 
 import java.io.IOException;
@@ -56,8 +57,8 @@ public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin 
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine() {
-        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(ParquetFieldUtil.getSchema());
+    public <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine(MapperService mapperService) {
+        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(ParquetFieldUtil.getSchema(mapperService));
     }
 
     @Override
