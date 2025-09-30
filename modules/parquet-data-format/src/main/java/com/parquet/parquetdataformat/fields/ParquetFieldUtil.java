@@ -64,12 +64,16 @@ public class ParquetFieldUtil {
             new Field(BooleanFieldMapper.CONTENT_TYPE,
                 FieldType.nullable(new ArrowType.Bool()), null),
 
-            //Keyword fields
+            //Keyword field
             new Field(KeywordFieldMapper.CONTENT_TYPE,
                 FieldType.nullable(new ArrowType.Utf8()), null),
 
-            //Text fields
+            //Text field
             new Field(TextFieldMapper.CONTENT_TYPE,
+                FieldType.notNullable(new ArrowType.Utf8()), null),
+
+            //Keyword field
+            new Field(KeywordFieldMapper.CONTENT_TYPE,
                 FieldType.notNullable(new ArrowType.Utf8()), null)
         ));
     }
@@ -106,6 +110,10 @@ public class ParquetFieldUtil {
         //Text field
         ParquetField textParquetField = new TextParquetField();
         parquetFieldMap.put(TextFieldMapper.CONTENT_TYPE, textParquetField);
+
+        //Keyword field
+        ParquetField keywordParquetField = new KeywordParquetField();
+        parquetFieldMap.put(KeywordFieldMapper.CONTENT_TYPE, keywordParquetField);
     }
 
     public ParquetField getParquetField(String type) {
