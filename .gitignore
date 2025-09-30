@@ -10,6 +10,8 @@ CLAUDE.md
 build-idea/
 out/
 
+modules/parquet-data-format/src/main/rust/target/
+
 # include shared intellij config
 !.idea/inspectionProfiles/Project_Default.xml
 !.idea/runConfigurations/Debug_OpenSearch.xml
