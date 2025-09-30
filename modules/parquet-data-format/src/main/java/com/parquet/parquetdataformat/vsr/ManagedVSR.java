@@ -151,6 +151,20 @@ public class ManagedVSR implements AutoCloseable {
         }
     }
 
+    public ArrowExport exportSchema() {
+        lock.readLock().lock();
+        try {
+            ArrowSchema arrowSchema = ArrowSchema.allocateNew(allocator);
+
+            // Export the VectorSchemaRoot to C Data Interface
+            Data.exportSchema(allocator, vsr.getSchema(), null, arrowSchema);
+
+            return new ArrowExport(null, arrowSchema);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     /**
      * Checks if this VSR is immutable (frozen).
      *

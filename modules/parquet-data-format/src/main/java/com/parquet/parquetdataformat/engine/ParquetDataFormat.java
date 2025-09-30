@@ -43,4 +43,6 @@ public class ParquetDataFormat implements DataFormat {
     public void configureStore() {
 
     }
+
+    public static ParquetDataFormat PARQUET_DATA_FORMAT = new ParquetDataFormat();
 }

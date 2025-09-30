@@ -47,8 +47,7 @@ public class ParquetWriter implements Writer<ParquetDocumentInput> {
 
     @Override
     public FileMetadata flush(FlushIn flushIn) throws IOException {
-        vsrManager.flush(flushIn);
-        return null;
+        return vsrManager.flush(flushIn);
     }
 
     @Override

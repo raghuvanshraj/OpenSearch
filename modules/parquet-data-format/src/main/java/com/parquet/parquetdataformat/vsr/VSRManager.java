@@ -8,6 +8,7 @@
 
 package com.parquet.parquetdataformat.vsr;
 
+import com.parquet.parquetdataformat.engine.ParquetDataFormat;
 import com.parquet.parquetdataformat.writer.ParquetDocumentInput;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -20,7 +21,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.opensearch.index.engine.exec.FileMetadata;
+import org.opensearch.index.engine.exec.FlushIn;
 import org.opensearch.index.engine.exec.WriteResult;
+
+import static com.parquet.parquetdataformat.engine.ParquetDataFormat.PARQUET_DATA_FORMAT;
 
 /**
  * Manages VectorSchemaRoot lifecycle with integrated memory management and native call wrappers.
@@ -61,7 +66,7 @@ public class VSRManager {
     private void initializeWriter() {
         try {
             // Export schema through managed VSR
-            try (ArrowExport export = managedVSR.exportToArrow()) {
+            try (ArrowExport export = managedVSR.exportSchema()) {
                 long schemaAddress = export.getSchemaAddress();
 
                 // Direct native call - RustBridge handles all validation
@@ -108,7 +113,7 @@ public class VSRManager {
         }
     }
 
-    public Object flush(Object flushIn) throws IOException {
+    public FileMetadata flush(FlushIn flushIn) throws IOException {
         System.out.println("[JAVA] flush called, row count: " + managedVSR.getRowCount());
         try {
             // Only flush if we have data
@@ -127,10 +132,11 @@ public class VSRManager {
             // Direct native call - write the managed VSR data
             try (ArrowExport export = managedVSR.exportToArrow()) {
                 RustBridge.write(fileName, export.getArrayAddress(), export.getSchemaAddress());
+                RustBridge.closeWriter(fileName);
             }
             System.out.println("[JAVA] Successfully flushed data");
 
-            return null;
+            return new FileMetadata(PARQUET_DATA_FORMAT, fileName);
         } catch (Exception e) {
             System.out.println("[JAVA] ERROR in flush: " + e.getMessage());
             throw new IOException("Failed to flush data: " + e.getMessage(), e);

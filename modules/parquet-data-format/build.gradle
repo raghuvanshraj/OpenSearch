@@ -168,7 +168,7 @@ run {
 // updateVersion: Task to auto update version to the next development iteration
 tasks.register('buildRust', Exec) {
   workingDir = file("${projectDir}/src/main/rust")
-  commandLine = ['/Users/rayshrey/.cargo/bin/cargo', 'build', '--release']
+  commandLine = ['cargo', 'build', '--release']
 }
 
 tasks.register('copyNativeLib', Copy) {
@@ -204,6 +204,12 @@ tasks.register('copyNativeLib', Copy) {
   }
 
 }
+
+// Wire Rust build tasks into the Gradle build lifecycle
+compileJava.dependsOn copyNativeLib
+processResources.dependsOn copyNativeLib
+copyNativeLib.mustRunAfter clean
+buildRust.mustRunAfter clean
 
 task updateVersion {
   onlyIf { System.getProperty('newVersion') }

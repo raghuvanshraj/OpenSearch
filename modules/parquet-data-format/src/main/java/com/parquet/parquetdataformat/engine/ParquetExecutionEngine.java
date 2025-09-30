@@ -13,13 +13,15 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.parquet.parquetdataformat.engine.ParquetDataFormat.PARQUET_DATA_FORMAT;
+
 /**
  * Main execution engine for Parquet-based indexing operations in OpenSearch.
- * 
+ *
  * <p>This engine implements OpenSearch's IndexingExecutionEngine interface to provide
  * Parquet file generation capabilities within the indexing pipeline. It manages the
  * lifecycle of Parquet writers and coordinates the overall document processing workflow.
- * 
+ *
  * <p>Key responsibilities:
  * <ul>
  *   <li>Writer creation with unique file naming and Arrow schema integration</li>
@@ -27,18 +29,18 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li>Refresh operations for completing indexing cycles</li>
  *   <li>Integration with the broader Parquet data format ecosystem</li>
  * </ul>
- * 
+ *
  * <p>The engine uses an atomic counter to ensure unique Parquet file names across
  * concurrent operations, following the naming pattern "parquet_file_generation_N.parquet"
  * where N is an incrementing sequence number.
- * 
+ *
  * <p>Each writer instance created by this engine is configured with:
  * <ul>
  *   <li>A unique file name for output isolation</li>
  *   <li>The Arrow schema provided during engine construction</li>
  *   <li>Full access to the Parquet processing pipeline via {@link ParquetWriter}</li>
  * </ul>
- * 
+ *
  * <p>The engine is designed to work with {@link ParquetDocumentInput} for document
  * processing and integrates seamlessly with OpenSearch's execution framework.
  */
@@ -66,7 +68,9 @@ public class ParquetExecutionEngine implements IndexingExecutionEngine<ParquetDa
 
     @Override
     public RefreshResult refresh(RefreshInput refreshInput) throws IOException {
-        return null;
+        RefreshResult refreshResult = new RefreshResult();
+        refreshResult.add(PARQUET_DATA_FORMAT, refreshInput.getFiles());
+        return refreshResult;
     }
 
     @Override
