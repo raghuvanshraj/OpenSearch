@@ -59,7 +59,7 @@ public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin,
     @Override
     @SuppressWarnings("unchecked")
     public <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine(MapperService mapperService) {
-        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(ParquetFieldUtil.getSchema(mapperService));
+        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(() -> ParquetFieldUtil.getSchema(mapperService));
     }
 
     @Override

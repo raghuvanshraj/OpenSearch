@@ -52,12 +52,12 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
         this.pool = new DocumentWriterPool(() -> new CompositeDataFormatWriter(this));
     }
 
-    public CompositeIndexingExecutionEngine(PluginsService pluginsService) {
+    public CompositeIndexingExecutionEngine(MapperService mapperService, PluginsService pluginsService) {
      try {
         DataSourcePlugin plugin = pluginsService.filterPlugins(DataSourcePlugin.class).stream()
             .findAny()
             .orElseThrow(() -> new IllegalArgumentException("dataformat [" + DataFormat.TEXT + "] is not registered."));
-         delegates.add(plugin.indexingEngine());
+         delegates.add(plugin.indexingEngine(mapperService));
      } catch (NullPointerException e) {
          delegates.add(new TextEngine());
      }

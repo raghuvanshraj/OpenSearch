@@ -12,6 +12,7 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.opensearch.index.mapper.Mapper;
 import org.opensearch.index.mapper.MapperService;
+import org.opensearch.index.mapper.MetadataFieldMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,7 @@ public class ParquetFieldUtil {
         List<Field> fields = new ArrayList<>();
 
         for (Mapper mapper : mapperService.documentMapper().mappers()) {
+            if (mapper instanceof MetadataFieldMapper) continue;
             fields.add(new Field(mapper.name(), ArrowFieldRegistry.getFieldType(mapper.typeName()), null));
         }
 

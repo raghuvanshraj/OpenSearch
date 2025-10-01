@@ -12,6 +12,7 @@ import com.parquet.parquetdataformat.writer.ParquetWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static com.parquet.parquetdataformat.engine.ParquetDataFormat.PARQUET_DATA_FORMAT;
 
@@ -48,9 +49,9 @@ public class ParquetExecutionEngine implements IndexingExecutionEngine<ParquetDa
 
     public static final String FILE_NAME_PREFIX = "parquet_file_generation";
     AtomicInteger counter;
-    Schema schema;
+    Supplier<Schema> schema;
 
-    public ParquetExecutionEngine(Schema schema) {
+    public ParquetExecutionEngine(Supplier<Schema> schema) {
         counter = new AtomicInteger(0);
         this.schema = schema;
     }
@@ -63,7 +64,7 @@ public class ParquetExecutionEngine implements IndexingExecutionEngine<ParquetDa
     @Override
     public Writer<ParquetDocumentInput> createWriter() throws IOException {
         String fileName = FILE_NAME_PREFIX + "_" + counter.getAndIncrement() + ".parquet";
-        return new ParquetWriter(fileName, schema);
+        return new ParquetWriter(fileName, schema.get());
     }
 
     @Override

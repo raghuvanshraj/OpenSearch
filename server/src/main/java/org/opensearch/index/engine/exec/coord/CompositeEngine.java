@@ -52,7 +52,7 @@ public class CompositeEngine implements Indexer {
     public CompositeEngine(MapperService mapperService, PluginsService pluginsService) throws IOException {
         List<SearchEnginePlugin> searchEnginePlugins = pluginsService.filterPlugins(SearchEnginePlugin.class);
         // How to bring the Dataformat here? Currently this means only Text and LuceneFormat can be used
-        this.engine = new CompositeIndexingExecutionEngine(pluginsService);
+        this.engine = new CompositeIndexingExecutionEngine(mapperService, pluginsService);
 
         // Refresh here so that catalog snapshot gets initialized
         // TODO : any better way to do this ?

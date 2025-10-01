@@ -37,7 +37,7 @@ public class ParquetDocumentInput implements DocumentInput<ManagedVSR> {
 
     @Override
     public void addField(MappedFieldType fieldType, Object value) {
-        ArrowFieldRegistry.getParquetField(fieldType.name()).createField(fieldType, managedVSR, value);
+        ArrowFieldRegistry.getParquetField(fieldType.typeName()).createField(fieldType, managedVSR, value);
     }
 
     @Override
