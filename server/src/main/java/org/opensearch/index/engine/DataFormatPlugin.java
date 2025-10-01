@@ -11,12 +11,11 @@ package org.opensearch.index.engine;
 import org.opensearch.index.engine.exec.DataFormat;
 import org.opensearch.index.engine.exec.IndexingExecutionEngine;
 import org.opensearch.index.mapper.MapperService;
-
-import javax.xml.crypto.Data;
+import org.opensearch.index.shard.ShardPath;
 
 public interface DataFormatPlugin  {
 
-    <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine(MapperService mapperService);
+    <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine(MapperService mapperService, ShardPath shardPath);
 
     DataFormat getDataFormat();
 }

@@ -8,8 +8,10 @@ import org.opensearch.index.engine.exec.RefreshResult;
 import org.opensearch.index.engine.exec.Writer;
 import com.parquet.parquetdataformat.writer.ParquetDocumentInput;
 import com.parquet.parquetdataformat.writer.ParquetWriter;
+import org.opensearch.index.shard.ShardPath;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -50,10 +52,12 @@ public class ParquetExecutionEngine implements IndexingExecutionEngine<ParquetDa
     public static final String FILE_NAME_PREFIX = "parquet_file_generation";
     AtomicInteger counter;
     Supplier<Schema> schema;
+    private final ShardPath shardPath;
 
-    public ParquetExecutionEngine(Supplier<Schema> schema) {
+    public ParquetExecutionEngine(Supplier<Schema> schema, ShardPath shardPath) {
         counter = new AtomicInteger(0);
         this.schema = schema;
+        this.shardPath = shardPath;
     }
 
     @Override
@@ -63,7 +67,7 @@ public class ParquetExecutionEngine implements IndexingExecutionEngine<ParquetDa
 
     @Override
     public Writer<ParquetDocumentInput> createWriter() throws IOException {
-        String fileName = FILE_NAME_PREFIX + "_" + counter.getAndIncrement() + ".parquet";
+        String fileName = Path.of(shardPath.getDataPath().toString(), FILE_NAME_PREFIX + "_" + counter.getAndIncrement() + ".parquet").toString();
         return new ParquetWriter(fileName, schema.get());
     }
 

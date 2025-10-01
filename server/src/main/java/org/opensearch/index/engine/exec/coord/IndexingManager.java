@@ -31,7 +31,7 @@ public class IndexingManager {  //Internal Engine
     private CatalogSnapshot catalogSnapshot;
 
     public IndexingManager(MapperService mapperService/*, EngineConfig engineConfig*/) {
-        this.engine = new CompositeIndexingExecutionEngine(mapperService, null, new Any(List.of(DataFormat.TEXT)));
+        this.engine = new CompositeIndexingExecutionEngine(mapperService, null, new Any(List.of(DataFormat.TEXT)), null);
     }
 
     public CompositeDataFormatWriter.CompositeDocumentInput documentInput() throws IOException {

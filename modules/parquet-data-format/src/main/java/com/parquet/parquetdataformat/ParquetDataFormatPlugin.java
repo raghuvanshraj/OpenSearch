@@ -8,17 +8,13 @@
 package com.parquet.parquetdataformat;
 
 import com.parquet.parquetdataformat.fields.ParquetFieldUtil;
-import com.parquet.parquetdataformat.writer.ParquetDocumentInput;
 import com.parquet.parquetdataformat.writer.ParquetWriter;
 import org.opensearch.index.engine.DataFormatPlugin;
 import org.opensearch.index.engine.exec.DataFormat;
-import org.opensearch.index.engine.exec.DocumentInput;
 import org.opensearch.index.engine.exec.IndexingExecutionEngine;
-import org.opensearch.index.engine.exec.Writer;
 import com.parquet.parquetdataformat.bridge.RustBridge;
-import com.parquet.parquetdataformat.engine.DummyDataUtils;
-import com.parquet.parquetdataformat.engine.ParquetDataFormat;
 import com.parquet.parquetdataformat.engine.ParquetExecutionEngine;
+import org.opensearch.index.shard.ShardPath;
 import org.opensearch.plugins.DataSourcePlugin;
 import org.opensearch.index.mapper.MapperService;
 import org.opensearch.plugins.Plugin;
@@ -58,8 +54,8 @@ public class ParquetDataFormatPlugin extends Plugin implements DataFormatPlugin,
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine(MapperService mapperService) {
-        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(() -> ParquetFieldUtil.getSchema(mapperService));
+    public <T extends DataFormat> IndexingExecutionEngine<T> indexingEngine(MapperService mapperService, ShardPath shardPath) {
+        return (IndexingExecutionEngine<T>) new ParquetExecutionEngine(() -> ParquetFieldUtil.getSchema(mapperService), shardPath);
     }
 
     @Override

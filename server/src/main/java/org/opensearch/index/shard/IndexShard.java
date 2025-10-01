@@ -142,10 +142,8 @@ import org.opensearch.index.engine.NRTReplicationEngine;
 import org.opensearch.index.engine.ReadOnlyEngine;
 import org.opensearch.index.engine.RefreshFailedEngineException;
 import org.opensearch.index.engine.SafeCommitInfo;
-import org.opensearch.index.engine.SearchExecutionEngine;
 import org.opensearch.index.engine.Segment;
 import org.opensearch.index.engine.SegmentsStats;
-import org.opensearch.index.engine.exec.DocumentInput;
 import org.opensearch.index.engine.exec.bridge.CheckpointState;
 import org.opensearch.index.engine.exec.bridge.Indexer;
 import org.opensearch.index.engine.exec.bridge.IndexingThrottler;
@@ -566,7 +564,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 startRefreshTask();
             }
         }
-        this.compositeEngine = new CompositeEngine(mapperService, pluginsService);
+        this.compositeEngine = new CompositeEngine(mapperService, pluginsService, path);
     }
 
     public CompositeEngine getIndexingExecutionCoordinator() {
@@ -4976,7 +4974,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     public boolean scheduledRefresh() {
         verifyNotClosed();
         boolean listenerNeedsRefresh = refreshListeners.refreshNeeded();
-        if (isReadAllowed() && (listenerNeedsRefresh || getEngine().refreshNeeded())) {
+        if (isReadAllowed() && (listenerNeedsRefresh || true)) {
             if (listenerNeedsRefresh == false // if we have a listener that is waiting for a refresh we need to force it
                 && isSearchIdleSupported()
                 && isSearchIdle()
@@ -4985,15 +4983,19 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
                 // lets skip this refresh since we are search idle and
                 // don't necessarily need to refresh. the next searcher access will register a refreshListener and that will
                 // cause the next schedule to refresh.
-                final Engine engine = getEngine();
-                engine.maybePruneDeletes(); // try to prune the deletes in the engine if we accumulated some
-                setRefreshPending(engine);
-                return false;
+//                final Engine engine = getEngine();
+//                engine.maybePruneDeletes(); // try to prune the deletes in the engine if we accumulated some
+//                setRefreshPending(engine);
+//                return false;
+                getIndexingExecutionCoordinator().refresh("schedule");
+                return true;
             } else {
                 if (logger.isTraceEnabled()) {
                     logger.trace("refresh with source [schedule]");
                 }
-                return getEngine().maybeRefresh("schedule");
+                getIndexingExecutionCoordinator().refresh("schedule");
+                return true;
+//                return getEngine().maybeRefresh("schedule");
             }
         }
         final Engine engine = getEngine();

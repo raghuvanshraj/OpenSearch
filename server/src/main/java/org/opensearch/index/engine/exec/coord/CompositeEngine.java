@@ -13,13 +13,11 @@ import org.opensearch.common.annotation.ExperimentalApi;
 
 import org.apache.lucene.search.ReferenceManager;
 import org.opensearch.index.engine.CatalogSnapshotAwareRefreshListener;
-import org.opensearch.index.engine.DataFormatPlugin;
 import org.opensearch.index.engine.Engine;
 import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.engine.SafeCommitInfo;
 import org.opensearch.index.engine.SearchExecEngine;
 import org.opensearch.index.engine.Segment;
-import org.opensearch.index.engine.exec.DataFormat;
 import org.opensearch.index.engine.exec.RefreshInput;
 import org.opensearch.index.engine.exec.WriteResult;
 import org.opensearch.index.engine.exec.bridge.Indexer;
@@ -27,9 +25,9 @@ import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
 import org.opensearch.index.engine.exec.composite.CompositeIndexingExecutionEngine;
 import org.opensearch.index.mapper.KeywordFieldMapper;
 import org.opensearch.index.mapper.MapperService;
+import org.opensearch.index.shard.ShardPath;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.TranslogManager;
-import org.opensearch.plugins.DataSourcePlugin;
 import org.opensearch.plugins.SearchEnginePlugin;
 import org.opensearch.plugins.PluginsService;
 
@@ -49,10 +47,10 @@ public class CompositeEngine implements Indexer {
     private List<CatalogSnapshotAwareRefreshListener> catalogSnapshotAwareRefreshListeners = new ArrayList<>();
     private Map<org.opensearch.vectorized.execution.search.DataFormat, List<SearchExecEngine<?, ?, ?, ?>>> readEngines = new HashMap<>();
 
-    public CompositeEngine(MapperService mapperService, PluginsService pluginsService) throws IOException {
+    public CompositeEngine(MapperService mapperService, PluginsService pluginsService, ShardPath shardPath) throws IOException {
         List<SearchEnginePlugin> searchEnginePlugins = pluginsService.filterPlugins(SearchEnginePlugin.class);
         // How to bring the Dataformat here? Currently this means only Text and LuceneFormat can be used
-        this.engine = new CompositeIndexingExecutionEngine(mapperService, pluginsService);
+        this.engine = new CompositeIndexingExecutionEngine(mapperService, pluginsService, shardPath);
 
         // Refresh here so that catalog snapshot gets initialized
         // TODO : any better way to do this ?
@@ -181,7 +179,7 @@ public class CompositeEngine implements Indexer {
     }
 
     public static void main(String[] args) throws Exception {
-        CompositeEngine coordinator = new CompositeEngine(null, null);
+        CompositeEngine coordinator = new CompositeEngine(null, null, null);
 
         for (int i = 0; i < 5; i++) {
 
