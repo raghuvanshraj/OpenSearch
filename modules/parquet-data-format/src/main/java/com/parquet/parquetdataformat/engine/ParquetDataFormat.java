@@ -45,4 +45,14 @@ public class ParquetDataFormat implements DataFormat {
     }
 
     public static ParquetDataFormat PARQUET_DATA_FORMAT = new ParquetDataFormat();
+
+    @Override
+    public boolean equals(Object obj) {
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return 0;
+    }
 }

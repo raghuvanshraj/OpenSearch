@@ -19,6 +19,7 @@ import org.opensearch.index.engine.SafeCommitInfo;
 import org.opensearch.index.engine.SearchExecEngine;
 import org.opensearch.index.engine.Segment;
 import org.opensearch.index.engine.exec.RefreshInput;
+import org.opensearch.index.engine.exec.RefreshResult;
 import org.opensearch.index.engine.exec.WriteResult;
 import org.opensearch.index.engine.exec.bridge.Indexer;
 import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
@@ -120,7 +121,12 @@ public class CompositeEngine implements Indexer {
         }
         CatalogSnapshot newCatSnap = null;
         try {
-            newCatSnap = new CatalogSnapshot(engine.refresh(new RefreshInput()), id + 1L);
+            RefreshResult refreshResult = engine.refresh(new RefreshInput());
+            if (refreshResult == null) {
+                return;
+            }
+            newCatSnap = new CatalogSnapshot(refreshResult, id + 1L);
+            System.out.println("CATALOG SNAPSHOT: " + newCatSnap);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }

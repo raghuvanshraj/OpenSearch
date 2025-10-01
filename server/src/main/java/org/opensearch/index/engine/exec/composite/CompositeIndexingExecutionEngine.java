@@ -92,6 +92,10 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
                 refreshInputs.computeIfAbsent(metadata.df(), df -> new RefreshInput()).add(metadata);
             }
 
+            if (refreshInputs.isEmpty()) {
+                return null;
+            }
+
             // make indexing engines aware of everything
             for (IndexingExecutionEngine<?> delegate : delegates) {
                 RefreshInput refreshInput = refreshInputs.get(delegate.getDataFormat());

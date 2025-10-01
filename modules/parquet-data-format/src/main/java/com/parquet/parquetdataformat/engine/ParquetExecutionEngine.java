@@ -1,17 +1,14 @@
 package com.parquet.parquetdataformat.engine;
 
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.opensearch.index.engine.exec.DataFormat;
-import org.opensearch.index.engine.exec.IndexingExecutionEngine;
-import org.opensearch.index.engine.exec.RefreshInput;
-import org.opensearch.index.engine.exec.RefreshResult;
-import org.opensearch.index.engine.exec.Writer;
+import org.opensearch.index.engine.exec.*;
 import com.parquet.parquetdataformat.writer.ParquetDocumentInput;
 import com.parquet.parquetdataformat.writer.ParquetWriter;
 import org.opensearch.index.shard.ShardPath;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -52,6 +49,7 @@ public class ParquetExecutionEngine implements IndexingExecutionEngine<ParquetDa
     public static final String FILE_NAME_PREFIX = "parquet_file_generation";
     AtomicInteger counter;
     Supplier<Schema> schema;
+    private final List<FileMetadata> filesWrittenAlready = new ArrayList<>();
     private final ShardPath shardPath;
 
     public ParquetExecutionEngine(Supplier<Schema> schema, ShardPath shardPath) {
@@ -74,7 +72,8 @@ public class ParquetExecutionEngine implements IndexingExecutionEngine<ParquetDa
     @Override
     public RefreshResult refresh(RefreshInput refreshInput) throws IOException {
         RefreshResult refreshResult = new RefreshResult();
-        refreshResult.add(PARQUET_DATA_FORMAT, refreshInput.getFiles());
+        filesWrittenAlready.addAll(refreshInput.getFiles());
+        refreshResult.add(PARQUET_DATA_FORMAT, filesWrittenAlready);
         return refreshResult;
     }
 
