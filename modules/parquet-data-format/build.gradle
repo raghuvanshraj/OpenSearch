@@ -208,6 +208,7 @@ tasks.register('copyNativeLib', Copy) {
 // Wire Rust build tasks into the Gradle build lifecycle
 compileJava.dependsOn copyNativeLib
 processResources.dependsOn copyNativeLib
+sourcesJar.dependsOn copyNativeLib
 copyNativeLib.mustRunAfter clean
 buildRust.mustRunAfter clean
 

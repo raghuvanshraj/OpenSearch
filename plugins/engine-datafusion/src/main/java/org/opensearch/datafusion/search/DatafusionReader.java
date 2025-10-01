@@ -87,7 +87,7 @@ public class DatafusionReader implements Closeable {
             throw new IllegalStateException("Listing table has been already closed");
         }
 
-        closeDatafusionReader(this.cachePtr);
+//        closeDatafusionReader(this.cachePtr);
         this.cachePtr = -1;
     }
 }

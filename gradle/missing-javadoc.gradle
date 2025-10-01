@@ -163,6 +163,10 @@ configure([
   project(":test:logger-usage"),
   project(":libs:opensearch-vectorized-exec-spi"), // TODO
   project(":plugins:engine-datafusion"), //TODO
+  project(":server"),
+  project(":modules:parquet-data-format"),
+  project(":libs:opensearch-dataformat-csv"),
+  project(":plugins:dataformat-csv"), //TODO
 ]) {
   project.tasks.withType(MissingJavadocTask) {
     isExcluded = true
