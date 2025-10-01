@@ -61,7 +61,8 @@ public class CompositeEngine implements Indexer {
             for(org.opensearch.vectorized.execution.search.DataFormat dataFormat : searchEnginePlugin.getSupportedFormats()) {
                 List<SearchExecEngine<?, ?, ?, ?>> currentSearchEngines = readEngines.getOrDefault(dataFormat, new ArrayList<>());
                 SearchExecEngine<?,?,?,?> newSearchEngine = searchEnginePlugin.createEngine(dataFormat,
-                    catalogSnapshot.getSearchableFiles(dataFormat.toString()));
+                    catalogSnapshot.getSearchableFiles(dataFormat.getName()),
+                    shardPath);
 
                 currentSearchEngines.add(newSearchEngine);
                 readEngines.put(dataFormat, currentSearchEngines);

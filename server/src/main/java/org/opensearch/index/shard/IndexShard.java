@@ -1496,7 +1496,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         if (logger.isTraceEnabled()) {
             logger.trace("refresh with source [{}]", source);
         }
-        getIndexer().refresh(source);
+        getIndexingExecutionCoordinator().refresh(source);
+//        getIndexer().refresh(source);
     }
 
     /**
