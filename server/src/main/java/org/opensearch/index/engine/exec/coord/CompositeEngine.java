@@ -35,6 +35,7 @@ import org.opensearch.plugins.PluginsService;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +63,7 @@ public class CompositeEngine implements Indexer {
             for(org.opensearch.vectorized.execution.search.DataFormat dataFormat : searchEnginePlugin.getSupportedFormats()) {
                 List<SearchExecEngine<?, ?, ?, ?>> currentSearchEngines = readEngines.getOrDefault(dataFormat, new ArrayList<>());
                 SearchExecEngine<?,?,?,?> newSearchEngine = searchEnginePlugin.createEngine(dataFormat,
-                    catalogSnapshot.getSearchableFiles(dataFormat.getName()),
+                    Collections.emptyList(),
                     shardPath);
 
                 currentSearchEngines.add(newSearchEngine);
