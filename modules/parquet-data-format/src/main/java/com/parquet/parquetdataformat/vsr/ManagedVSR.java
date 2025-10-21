@@ -109,9 +109,9 @@ public class ManagedVSR implements AutoCloseable {
     public void setState(VSRState newState) {
         VSRState oldState = state.getAndSet(newState);
 
-        System.out.println(String.format(
+        /**System.out.println(String.format(
             "[VSR] State transition: %s -> %s for VSR %s",
-            oldState, newState, id));
+            oldState, newState, id));*/
     }
 
     /**

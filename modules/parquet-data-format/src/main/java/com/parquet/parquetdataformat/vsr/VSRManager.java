@@ -71,6 +71,7 @@ public class VSRManager {
 
                 // Direct native call - RustBridge handles all validation
                 RustBridge.createWriter(fileName, schemaAddress);
+                RustBridge.printStats();
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize Parquet writer: " + e.getMessage(), e);
@@ -92,7 +93,7 @@ public class VSRManager {
             throw new IOException("Cannot add document - VSR is not active: " + managedVSR.getState());
         }
 
-        System.out.println("[JAVA] addToManagedVSR called, current row count: " + managedVSR.getRowCount());
+        //System.out.println("[JAVA] addToManagedVSR called, current row count: " + managedVSR.getRowCount());
 
         try {
             // Since ParquetDocumentInput now works directly with ManagedVSR,
@@ -101,30 +102,30 @@ public class VSRManager {
             // which will increment the row count.
             WriteResult result = document.addToWriter();
 
-            System.out.println("[JAVA] After adding document, row count: " + managedVSR.getRowCount());
+            //System.out.println("[JAVA] After adding document, row count: " + managedVSR.getRowCount());
 
             // Check for VSR rotation AFTER successful document processing
             handleVSRRotationAfterAddToManagedVSR();
 
             return result;
         } catch (Exception e) {
-            System.out.println("[JAVA] ERROR in addToManagedVSR: " + e.getMessage());
+            //System.out.println("[JAVA] ERROR in addToManagedVSR: " + e.getMessage());
             throw new IOException("Failed to add document: " + e.getMessage(), e);
         }
     }
 
     public FileMetadata flush(FlushIn flushIn) throws IOException {
-        System.out.println("[JAVA] flush called, row count: " + managedVSR.getRowCount());
+        //System.out.println("[JAVA] flush called, row count: " + managedVSR.getRowCount());
         try {
             // Only flush if we have data
             if (managedVSR.getRowCount() == 0) {
-                System.out.println("[JAVA] No data to flush, returning null");
+                //System.out.println("[JAVA] No data to flush, returning null");
                 return null;
             }
 
             // Transition VSR to FROZEN state before flushing
             managedVSR.setState(VSRState.FROZEN);
-            System.out.println("[JAVA] Flushing " + managedVSR.getRowCount() + " rows");
+            //System.out.println("[JAVA] Flushing " + managedVSR.getRowCount() + " rows");
 
             // Transition to FLUSHING state
             managedVSR.setState(VSRState.FLUSHING);
@@ -134,11 +135,11 @@ public class VSRManager {
                 RustBridge.write(fileName, export.getArrayAddress(), export.getSchemaAddress());
                 RustBridge.closeWriter(fileName);
             }
-            System.out.println("[JAVA] Successfully flushed data");
+            //System.out.println("[JAVA] Successfully flushed data");
 
             return new FileMetadata(PARQUET_DATA_FORMAT, fileName);
         } catch (Exception e) {
-            System.out.println("[JAVA] ERROR in flush: " + e.getMessage());
+            //System.out.println("[JAVA] ERROR in flush: " + e.getMessage());
             throw new IOException("Failed to flush data: " + e.getMessage(), e);
         }
     }
@@ -148,7 +149,7 @@ public class VSRManager {
             // Direct native calls
             try {
                 RustBridge.closeWriter(fileName);
-                RustBridge.flushToDisk(fileName);
+                //RustBridge.flushToDisk(fileName);
             } catch (IOException e) {
                 System.err.println("Warning: Failed to close/flush writer: " + e.getMessage());
             }
@@ -177,13 +178,13 @@ public class VSRManager {
             boolean rotated = vsrPool.maybeRotateActiveVSR();
 
             if (rotated) {
-                System.out.println("[JAVA] VSR rotation occurred after document addition");
+                //System.out.println("[JAVA] VSR rotation occurred after document addition");
 
                 // Get the frozen VSR that was just created by rotation
                 ManagedVSR frozenVSR = vsrPool.getFrozenVSR();
                 if (frozenVSR != null) {
-                    System.out.println("[JAVA] Processing frozen VSR: " + frozenVSR.getId() +
-                        " with " + frozenVSR.getRowCount() + " rows");
+                    //System.out.println("[JAVA] Processing frozen VSR: " + frozenVSR.getId() +
+                    //    " with " + frozenVSR.getRowCount() + " rows");
 
                     // Write the frozen VSR data immediately
                     frozenVSR.setState(VSRState.FLUSHING);
@@ -191,7 +192,7 @@ public class VSRManager {
                         RustBridge.write(fileName, export.getArrayAddress(), export.getSchemaAddress());
                     }
 
-                    System.out.println("[JAVA] Successfully wrote frozen VSR data");
+                    //System.out.println("[JAVA] Successfully wrote frozen VSR data");
 
                     // Complete the VSR processing
                     vsrPool.completeVSR(frozenVSR);
@@ -208,8 +209,8 @@ public class VSRManager {
                 // Reinitialize field vector map with new VSR
                 reinitializeFieldVectorMap();
 
-                System.out.println("[JAVA] VSR rotation completed, new active VSR: " + managedVSR.getId() +
-                    ", row count: " + managedVSR.getRowCount());
+                //System.out.println("[JAVA] VSR rotation completed, new active VSR: " + managedVSR.getId() +
+                //    ", row count: " + managedVSR.getRowCount());
             }
         } catch (IOException e) {
             System.err.println("[JAVA] Error during VSR rotation: " + e.getMessage());
@@ -230,7 +231,7 @@ public class VSRManager {
 
         // Check if we got a different VSR (rotation occurred)
         if (currentActive != managedVSR) {
-            System.out.println("[JAVA] VSR rotation detected, updating references");
+            //System.out.println("[JAVA] VSR rotation detected, updating references");
 
             // Update the managed VSR reference
             managedVSR = currentActive;
@@ -239,7 +240,7 @@ public class VSRManager {
             reinitializeFieldVectorMap();
 
             // Note: Writer initialization is not needed per VSR as it's per file
-            System.out.println("[JAVA] VSR rotation completed, new row count: " + managedVSR.getRowCount());
+            //System.out.println("[JAVA] VSR rotation completed, new row count: " + managedVSR.getRowCount());
         }
     }
 

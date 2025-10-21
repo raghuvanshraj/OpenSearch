@@ -168,7 +168,8 @@ run {
 // updateVersion: Task to auto update version to the next development iteration
 tasks.register('buildRust', Exec) {
   workingDir = file("${projectDir}/src/main/rust")
-  commandLine = ['cargo', 'build', '--release']
+  environment "RUSTFLAGS", "-C force-frame-pointers=yes -C debuginfo=2"
+  commandLine = ['/home/ec2-user/.cargo/bin/cargo', 'build', '--release']
 }
 
 tasks.register('copyNativeLib', Copy) {

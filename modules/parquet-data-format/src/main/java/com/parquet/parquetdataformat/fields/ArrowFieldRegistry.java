@@ -20,11 +20,7 @@ import org.apache.arrow.vector.types.FloatingPointPrecision;
 import org.apache.arrow.vector.types.TimeUnit;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.FieldType;
-import org.opensearch.index.mapper.BooleanFieldMapper;
-import org.opensearch.index.mapper.DateFieldMapper;
-import org.opensearch.index.mapper.KeywordFieldMapper;
-import org.opensearch.index.mapper.NumberFieldMapper;
-import org.opensearch.index.mapper.TextFieldMapper;
+import org.opensearch.index.mapper.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -63,6 +59,10 @@ public class ArrowFieldRegistry {
         FIELD_TYPE_MAP.put(KeywordFieldMapper.CONTENT_TYPE,
             FieldType.nullable(new ArrowType.Utf8()));
         FIELD_TYPE_MAP.put(TextFieldMapper.CONTENT_TYPE,
+            FieldType.nullable(new ArrowType.Utf8()));
+        FIELD_TYPE_MAP.put(MatchOnlyTextFieldMapper.CONTENT_TYPE,
+            FieldType.nullable(new ArrowType.Utf8()));
+        FIELD_TYPE_MAP.put(ConstantKeywordFieldMapper.CONTENT_TYPE,
             FieldType.nullable(new ArrowType.Utf8()));
 
         setUpParquetFieldMap();

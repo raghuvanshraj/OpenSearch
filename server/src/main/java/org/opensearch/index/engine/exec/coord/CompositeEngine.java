@@ -127,7 +127,7 @@ public class CompositeEngine implements Indexer {
                 return;
             }
             newCatSnap = new CatalogSnapshot(refreshResult, id + 1L);
-            System.out.println("CATALOG SNAPSHOT: " + newCatSnap);
+            //System.out.println("CATALOG SNAPSHOT: " + newCatSnap);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
@@ -210,7 +210,7 @@ public class CompositeEngine implements Indexer {
 
             // Refresh until generation
             coordinator.refresh("_manual_test");
-            System.out.println(coordinator.catalogSnapshot);
+            //System.out.println(coordinator.catalogSnapshot);
         }
     }
 

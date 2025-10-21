@@ -10,6 +10,7 @@ CLAUDE.md
 build-idea/
 out/
 
+modules/parquet-data-format/src/main/rust/target/
 modules/parquet-data-format/src/main/rust/target/*
 libs/dataformat-csv/jni/target/*
 libs/dataformat-csv/src/main/resources/*

@@ -49,12 +49,12 @@ public class DatafusionReader implements Closeable {
         this.files = files;
         String[] fileNames = new String[0];
         if(files != null) {
-            System.out.println("Got the files!!!!!");
+            //System.out.println("Got the files!!!!!");
             fileNames = files.stream().map(file -> Path.of(file.fileName()).getFileName().toString()).toArray(String[]::new);
         }
         //String[] fileNames = files.stream().map(file -> Path.of(file.fileName()).getFileName().toString()).toArray(String[]::new);
-        System.out.println("File names: " + Arrays.toString(fileNames));
-        System.out.println("Directory path: " + directoryPath);
+        //System.out.println("File names: " + Arrays.toString(fileNames));
+        //System.out.println("Directory path: " + directoryPath);
 
         this.cachePtr = DataFusionQueryJNI.createDatafusionReader(directoryPath, fileNames);
         incRef();

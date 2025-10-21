@@ -126,7 +126,7 @@ public class IndexingManager {  //Internal Engine
 
             // Refresh until generation
             coordinator.refresh("_manual_test");
-            System.out.println(coordinator.catalogSnapshot);
+            //System.out.println(coordinator.catalogSnapshot);
         }
     }
 
