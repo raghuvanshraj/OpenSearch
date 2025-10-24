@@ -210,6 +210,7 @@ public class ManagedVSR implements AutoCloseable {
     public void close() {
         lock.writeLock().lock();
         try {
+            //System.out.println("Close called on Managed VSR");
             if (state.get() != VSRState.CLOSED) {
                 state.set(VSRState.CLOSED);
                 vsr.close();

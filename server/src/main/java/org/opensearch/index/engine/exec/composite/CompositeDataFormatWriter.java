@@ -59,7 +59,9 @@ public class CompositeDataFormatWriter implements Writer<CompositeDataFormatWrit
 
     @Override
     public void close() {
-
+        for  (Writer<? extends DocumentInput> writer : writers) {
+            writer.close();
+        }
     }
 
     @Override

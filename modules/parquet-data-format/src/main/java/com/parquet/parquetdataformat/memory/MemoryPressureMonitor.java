@@ -43,7 +43,7 @@ public class MemoryPressureMonitor {
     }
 
     private final MemoryMXBean memoryBean;
-    private final ScheduledExecutorService scheduler;
+    //private final ScheduledExecutorService scheduler;
     private final AtomicLong directMemoryUsed;
     private final AtomicLong directMemoryMax;
     private final AtomicReference<PressureLevel> currentPressure;
@@ -58,11 +58,13 @@ public class MemoryPressureMonitor {
 
     public MemoryPressureMonitor(Settings settings) {
         this.memoryBean = ManagementFactory.getMemoryMXBean();
+        /*
         this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "parquet-memory-monitor");
             t.setDaemon(true);
             return t;
         });
+         */
 
         this.directMemoryUsed = new AtomicLong(0);
         this.currentPressure = new AtomicReference<>(PressureLevel.LOW);
@@ -77,7 +79,7 @@ public class MemoryPressureMonitor {
         this.directMemoryMax = new AtomicLong(maxDirectMemory);
 
         // Start monitoring
-        startMonitoring();
+        //startMonitoring();
     }
 
     /**
@@ -202,7 +204,7 @@ public class MemoryPressureMonitor {
     }
 
     private void startMonitoring() {
-        scheduler.scheduleAtFixedRate(this::updatePressureLevel, 1, 1, TimeUnit.SECONDS);
+        //scheduler.scheduleAtFixedRate(this::updatePressureLevel, 1, 1, TimeUnit.SECONDS);
     }
 
     private void updatePressureLevel() {
@@ -229,6 +231,7 @@ public class MemoryPressureMonitor {
      * Closes the monitor and stops background tasks.
      */
     public void close() {
+        /*
         scheduler.shutdown();
         try {
             if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
@@ -238,6 +241,7 @@ public class MemoryPressureMonitor {
             scheduler.shutdownNow();
             Thread.currentThread().interrupt();
         }
+         */
     }
 
     /**

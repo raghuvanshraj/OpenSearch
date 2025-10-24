@@ -19,8 +19,8 @@
 # Xms represents the initial size of total heap space
 # Xmx represents the maximum size of total heap space
 
--Xms8g
--Xmx8g
+-Xms32g
+-Xmx32g
 
 ################################################################
 ## Expert settings
@@ -86,3 +86,12 @@ ${error.file}
 
 21-:-javaagent:agent/opensearch-agent.jar
 21-:--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED
+
+
+# Enable native memory tracking
+-XX:NativeMemoryTracking=summary
+
+# Allow jcmd to attach to the process (required for 'jcmd VM.native_memory' commands)
+-XX:+UnlockDiagnosticVMOptions
+
+-Darrow.memory.debug.allocator=true

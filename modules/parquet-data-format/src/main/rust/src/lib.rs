@@ -182,7 +182,7 @@ impl NativeParquetWriter {
         }
     }
 
-    /**
+    /*
     fn flush_to_disk(filename: String) -> Result<(), Box<dyn std::error::Error>> {
         let log_msg = format!("[RUST] fsync_file called for file: {}\n", filename);
         //println!("{}", log_msg.trim());
@@ -266,7 +266,7 @@ pub extern "system" fn Java_com_parquet_parquetdataformat_bridge_RustBridge_clos
     }
 }
 
-/**
+/*
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_parquet_parquetdataformat_bridge_RustBridge_flushToDisk(
     mut env: JNIEnv,
@@ -279,7 +279,6 @@ pub extern "system" fn Java_com_parquet_parquetdataformat_bridge_RustBridge_flus
         Err(_) => -1,
     }
 }
-*/
 
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_parquet_parquetdataformat_bridge_RustBridge_printStats(
@@ -288,6 +287,7 @@ pub extern "system" fn Java_com_parquet_parquetdataformat_bridge_RustBridge_prin
 ) {
     NativeParquetWriter::print_arrow_writer_stats();
 }
+*/
 
 
 /*

@@ -230,6 +230,7 @@ public class VSRPool {
         // Close any remaining VSRs
         allVSRs.values().forEach(ManagedVSR::close);
         allVSRs.clear();
+        bufferPool.close();
     }
 
     private void initializeActiveVSR() {

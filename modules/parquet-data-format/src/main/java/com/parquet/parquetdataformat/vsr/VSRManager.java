@@ -71,7 +71,7 @@ public class VSRManager {
 
                 // Direct native call - RustBridge handles all validation
                 RustBridge.createWriter(fileName, schemaAddress);
-                RustBridge.printStats();
+                //RustBridge.printStats();
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize Parquet writer: " + e.getMessage(), e);
@@ -146,16 +146,9 @@ public class VSRManager {
 
     public void close() {
         try {
-            // Direct native calls
-            try {
-                RustBridge.closeWriter(fileName);
-                //RustBridge.flushToDisk(fileName);
-            } catch (IOException e) {
-                System.err.println("Warning: Failed to close/flush writer: " + e.getMessage());
-            }
-
             // Complete VSR processing and cleanup
-            vsrPool.completeVSR(managedVSR);
+            //vsrPool.completeVSR(managedVSR);
+            vsrPool.close();
             managedVSR = null;
 
         } catch (Exception e) {

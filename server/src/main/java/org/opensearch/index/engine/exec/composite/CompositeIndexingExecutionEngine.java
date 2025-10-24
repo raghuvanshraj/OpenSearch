@@ -90,6 +90,7 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
             for (CompositeDataFormatWriter dataFormatWriter : dataFormatWriters) {
                 FileMetadata metadata = dataFormatWriter.flush(null);
                 refreshInputs.computeIfAbsent(metadata.df(), df -> new RefreshInput()).add(metadata);
+                dataFormatWriter.close();
             }
 
             if (refreshInputs.isEmpty()) {
